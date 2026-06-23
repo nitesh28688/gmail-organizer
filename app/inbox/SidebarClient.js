@@ -226,6 +226,7 @@ export default function SidebarClient({ userEmail }) {
               {accounts.map(acc => (
                 <option key={acc.id} value={acc.id} style={{ background: 'var(--bg-color)', color: 'var(--text-primary)' }}>{acc.email}</option>
               ))}
+              <option value="unified" style={{ background: 'var(--bg-color)', color: 'var(--text-primary)' }}>All Accounts (Unified)</option>
             </select>
             <div style={{ position: 'absolute', right: '24px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', opacity: 0.7 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

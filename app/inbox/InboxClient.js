@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import ComposeModal from "./ComposeModal";
+import AIAssistant from "./AIAssistant";
 
 export default function InboxPage() {
   const searchParams = useSearchParams();
@@ -521,10 +522,54 @@ export default function InboxPage() {
                   <div style={{ fontWeight: '600' }}>{activeEmail.from}</div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>To: {activeEmail.to}</div>
                 </div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                  {new Date(activeEmail.date).toLocaleString()}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  {activeEmail.unsubscribeUrl && (
+                    <button 
+                      onClick={async (e) => {
+                        const btn = e.currentTarget;
+                        btn.disabled = true;
+                        btn.innerText = "Unsubscribing...";
+                        try {
+                          await fetch("/api/gmail/unsubscribe", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ url: activeEmail.unsubscribeUrl, accountId: activeEmail.accountId })
+                          });
+                          btn.innerText = "Unsubscribed ✅";
+                        } catch(err) {
+                          btn.innerText = "Error";
+                        }
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid var(--glass-border)',
+                        color: 'var(--text-secondary)',
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer'
+                      }}
+                      onMouseOver={e => { e.currentTarget.style.color = '#e11d48'; e.currentTarget.style.borderColor = '#e11d48'; }}
+                      onMouseOut={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--glass-border)'; }}
+                    >
+                      Unsubscribe
+                    </button>
+                  )}
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                    {new Date(activeEmail.date).toLocaleString()}
+                  </div>
                 </div>
               </div>
+
+              {/* AIAssistant Component */}
+              <AIAssistant 
+                emailContent={activeEmail.text || activeEmail.html?.replace(/<[^>]+>/g, '') || ""} 
+                onQuickReply={(text) => {
+                  setComposeTo(activeEmail.from);
+                  setComposeSubject(`Re: ${activeEmail.subject}`);
+                  setComposeOpen(true);
+                }} 
+              />
 
               {/* Email Body */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#ffffff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.2)' }}>
