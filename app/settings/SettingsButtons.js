@@ -10,9 +10,17 @@ export default function SettingsButtons() {
   const [aliasStatus, setAliasStatus] = useState("Add Send-As Alias");
 
   const handleAudit = async () => {
-    setAuditStatus("Scanning inbox...");
-    // TODO: Call API route to start audit background job
-    setTimeout(() => setAuditStatus("Audit complete!"), 2000);
+    setAuditStatus("Scanning inbox (this may take a minute)...");
+    try {
+      const res = await fetch("/api/gmail/audit", { method: "POST" });
+      if (!res.ok) throw new Error("Audit failed");
+      setAuditStatus("Audit complete! ✅");
+      setTimeout(() => setAuditStatus("Run Inbox Audit"), 5000);
+    } catch (e) {
+      console.error(e);
+      setAuditStatus("Audit encountered an error ❌");
+      setTimeout(() => setAuditStatus("Run Inbox Audit"), 3000);
+    }
   };
 
   const handleAddAlias = async (e) => {
