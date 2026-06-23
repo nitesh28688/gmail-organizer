@@ -7,6 +7,7 @@ import ComposeModal from "./ComposeModal";
 export default function InboxPage() {
   const searchParams = useSearchParams();
   const space = searchParams.get("space") || "All Mail";
+  const activeAccountId = searchParams.get("account") || "";
   
   const [emails, setEmails] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,8 +38,9 @@ export default function InboxPage() {
   const fetchInbox = async () => {
     const isBasicQuery = !searchQuery && !filterTo && !filterFrom && !filterSubject && !filterAttachment;
     
-    if (isBasicQuery && typeof window !== 'undefined' && window.emailCache && window.emailCache[space]) {
-      setEmails(window.emailCache[space]);
+    const cacheKey = `${space}_${activeAccountId}`;
+    if (isBasicQuery && typeof window !== 'undefined' && window.emailCache && window.emailCache[cacheKey]) {
+      setEmails(window.emailCache[cacheKey]);
       setLoading(false);
     } else {
       setLoading(true);
@@ -66,13 +68,13 @@ export default function InboxPage() {
       if (filterAttachment) finalQuery += ` has:attachment`;
       if (filterUnread) finalQuery += ` is:unread`;
 
-      const res = await fetch(`/api/gmail/messages?q=${encodeURIComponent(finalQuery.trim())}`);
+      const res = await fetch(`/api/gmail/messages?q=${encodeURIComponent(finalQuery.trim())}&accountId=${activeAccountId}`);
       const data = await res.json();
       setEmails(data.emails || []);
       
       if (isBasicQuery && typeof window !== 'undefined') {
         window.emailCache = window.emailCache || {};
-        window.emailCache[space] = data.emails || [];
+        window.emailCache[cacheKey] = data.emails || [];
       }
     } catch (e) {
       console.error("Failed to load emails", e);
@@ -81,7 +83,7 @@ export default function InboxPage() {
     }
   };
 
-  // Re-fetch when space changes, but wait for user to hit "Search" for custom queries
+  // Re-fetch when space or account changes
   useEffect(() => {
     setSearchQuery("");
     setFilterTo("");
@@ -90,7 +92,12 @@ export default function InboxPage() {
     setFilterAttachment(false);
     setFilterUnread(false);
     fetchInbox();
-  }, [space]);
+  }, [space, activeAccountId]);
+
+  // Immediate fetch when unread toggle changes
+  useEffect(() => {
+    fetchInbox();
+  }, [filterUnread]);
 
   const selectEmail = async (emailId) => {
     setLoadingBody(true);
@@ -291,9 +298,24 @@ export default function InboxPage() {
                 placeholder={`Search in ${space}...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ flex: 1, padding: '10px 16px', borderRadius: '24px', border: '1px solid var(--glass-border)', background: 'var(--glass-bg)', color: 'var(--text-primary)', outline: 'none' }}
+                style={{ flex: 1, padding: '10px 16px', borderRadius: '24px', border: '1px solid var(--glass-border)', background: 'var(--glass-bg)', color: 'var(--text-primary)', outline: 'none', minWidth: '100px' }}
               />
-              <button type="button" onClick={() => setShowFilters(!showFilters)} style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '24px', padding: '0 16px', color: 'var(--text-primary)', cursor: 'pointer' }}>
+              <button 
+                type="button" 
+                onClick={(e) => { e.preventDefault(); setFilterUnread(!filterUnread); }}
+                style={{ 
+                  background: filterUnread ? 'var(--text-primary)' : 'var(--glass-bg)', 
+                  color: filterUnread ? 'var(--bg-color)' : 'var(--text-primary)',
+                  border: '1px solid var(--glass-border)', 
+                  borderRadius: '24px', 
+                  padding: '8px 12px', 
+                  cursor: 'pointer',
+                  fontWeight: filterUnread ? '600' : '400',
+                  fontSize: '0.85rem'
+                }}>
+                Unread
+              </button>
+              <button type="button" onClick={() => setShowFilters(!showFilters)} style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '24px', padding: '0 16px', color: 'var(--text-primary)', cursor: 'pointer', height: '38px' }}>
                 ⚙️
               </button>
             </div>

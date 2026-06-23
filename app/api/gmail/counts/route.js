@@ -8,12 +8,12 @@ export async function POST(request) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const { spaces } = await request.json();
+    const { spaces, accountId } = await request.json();
     if (!spaces || !Array.isArray(spaces)) {
       return NextResponse.json({ error: "Invalid spaces payload" }, { status: 400 });
     }
 
-    const gmail = await getGmailClient(session.user.id);
+    const gmail = await getGmailClient(session.user.id, accountId);
 
     // Fetch counts for all provided queries in parallel
     const fetchCount = async (query) => {

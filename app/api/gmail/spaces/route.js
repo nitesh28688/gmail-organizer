@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
-import { fetchEmails } from "../../../../lib/gmail";
+import { authOptions } from "../../../api/auth/[...nextauth]/route";
+import { getSidebarSpaces } from "../../../../lib/gmail";
 import { NextResponse } from "next/server";
 
 export async function GET(request) {
@@ -8,14 +8,13 @@ export async function GET(request) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
-  const q = searchParams.get("q") || "";
-  const accountId = searchParams.get("accountId") || null;
+  const accountId = searchParams.get("accountId");
 
   try {
-    const emails = await fetchEmails(session.user.id, accountId, q);
-    return NextResponse.json({ emails });
+    const spaces = await getSidebarSpaces(session.user.id, accountId);
+    return NextResponse.json({ spaces });
   } catch (error) {
-    console.error("Fetch Emails Error:", error);
+    console.error("Fetch Spaces Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

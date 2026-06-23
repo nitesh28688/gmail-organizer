@@ -46,9 +46,9 @@ export async function POST(request) {
 
   try {
     const payload = await request.json();
-    const { draftId, to, from, subject, body, attachments } = payload;
+    const { draftId, to, from, subject, body, attachments, accountId } = payload;
     
-    const gmail = await getGmailClient(session.user.id);
+    const gmail = await getGmailClient(session.user.id, accountId);
     const raw = encodeEmail({ to, from, subject, body, attachments });
 
     if (draftId) {
@@ -76,10 +76,10 @@ export async function DELETE(request) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const { draftId } = await request.json();
+    const { draftId, accountId } = await request.json();
     if (!draftId) return NextResponse.json({ error: "Missing draftId" }, { status: 400 });
 
-    const gmail = await getGmailClient(session.user.id);
+    const gmail = await getGmailClient(session.user.id, accountId);
     await gmail.users.drafts.delete({ userId: "me", id: draftId });
 
     return NextResponse.json({ success: true });

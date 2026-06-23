@@ -9,7 +9,8 @@ export default function ComposeModal({
   initialTo = "",
   initialSubject = "",
   initialBody = "",
-  initialAttachments = []
+  initialAttachments = [],
+  initialAccountId = null
 }) {
   const [to, setTo] = useState(initialTo);
   const [subject, setSubject] = useState(initialSubject);
@@ -38,7 +39,7 @@ export default function ComposeModal({
     setSaveStatus("Saving...");
     const timeoutId = setTimeout(async () => {
       try {
-        const payload = { draftId, to, subject, body, from, attachments };
+        const payload = { draftId, to, subject, body, from, attachments, accountId: initialAccountId };
         const res = await fetch("/api/gmail/draft", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -71,7 +72,7 @@ export default function ComposeModal({
       const res = await fetch("/api/gmail/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to, subject, body, from, attachments }),
+        body: JSON.stringify({ to, subject, body, from, attachments, accountId: initialAccountId }),
       });
       if (!res.ok) throw new Error("Failed to send");
       
@@ -80,7 +81,7 @@ export default function ComposeModal({
         await fetch("/api/gmail/draft", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ draftId })
+          body: JSON.stringify({ draftId, accountId: initialAccountId })
         });
       }
       onClose(true); // pass true to indicate sent

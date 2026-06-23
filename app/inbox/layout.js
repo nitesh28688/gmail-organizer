@@ -11,16 +11,9 @@ export default async function InboxLayout({ children }) {
     redirect("/");
   }
 
-  let spaces = [];
-  try {
-    spaces = await getSidebarSpaces(session.user.id);
-  } catch (e) {
-    console.error("Failed to load spaces:", e);
-  }
-
   return (
     <div className="h-screen flex" style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
-      <SidebarClient spaces={spaces} userEmail={session.user.email} />
+      <SidebarClient userEmail={session.user.email} />
 
       {/* Main Content Area */}
       <main style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>

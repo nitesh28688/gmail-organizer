@@ -2,22 +2,27 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import ComposeModal from "./ComposeModal";
-
 import { signOut, signIn } from "next-auth/react";
 
-export default function SidebarClient({ spaces, userEmail }) {
+export default function SidebarClient({ userEmail }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  
   const currentSpace = searchParams.get("space") || "All Mail";
+  const activeAccountId = searchParams.get("account") || "";
+
+  const [accounts, setAccounts] = useState([]);
+  const [spaces, setSpaces] = useState([]);
+  
   const [isComposing, setIsComposing] = useState(false);
   const [expanded, setExpanded] = useState({ "Linear Ventures": false, "Nanoliss": false });
   const [counts, setCounts] = useState({});
   const [isLoadingCounts, setIsLoadingCounts] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Theme Toggle State
   const [isDarkMode, setIsDarkMode] = useState(true);
 
   useEffect(() => {
@@ -27,28 +32,54 @@ export default function SidebarClient({ spaces, userEmail }) {
   }, []);
 
   useEffect(() => {
-    // Apply theme
-    if (!isDarkMode) {
-      document.body.classList.add('light-mode');
-    } else {
-      document.body.classList.remove('light-mode');
-    }
+    if (!isDarkMode) document.body.classList.add('light-mode');
+    else document.body.classList.remove('light-mode');
   }, [isDarkMode]);
 
+  // Fetch accounts on mount
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      const res = await fetch("/api/gmail/accounts");
+      const data = await res.json();
+      if (data.accounts && data.accounts.length > 0) {
+        setAccounts(data.accounts);
+        if (!activeAccountId) {
+          router.replace(`?account=${data.accounts[0].id}`);
+        }
+      }
+    };
+    fetchAccounts();
+  }, [activeAccountId, router]);
+
+  // Fetch spaces when account changes
+  useEffect(() => {
+    if (!activeAccountId) return;
+    const fetchSpaces = async () => {
+      const res = await fetch(`/api/gmail/spaces?accountId=${activeAccountId}`);
+      const data = await res.json();
+      if (data.spaces) {
+        setSpaces(data.spaces);
+      }
+    };
+    fetchSpaces();
+  }, [activeAccountId]);
+
   const fetchCounts = async () => {
+    if (!activeAccountId || spaces.length === 0) return;
+    setIsLoadingCounts(true);
     try {
       const res = await fetch("/api/gmail/counts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ spaces }),
+        body: JSON.stringify({ spaces, accountId: activeAccountId }),
       });
       const data = await res.json();
       if (data.counts) {
         setCounts(data.counts);
-        setIsLoadingCounts(false);
       }
     } catch (e) {
       console.error("Failed to fetch counts", e);
+    } finally {
       setIsLoadingCounts(false);
     }
   };
@@ -58,7 +89,11 @@ export default function SidebarClient({ spaces, userEmail }) {
     const handleRefresh = () => fetchCounts();
     window.addEventListener("refreshCounts", handleRefresh);
     return () => window.removeEventListener("refreshCounts", handleRefresh);
-  }, [spaces]);
+  }, [spaces, activeAccountId]);
+
+  const handleAccountChange = (e) => {
+    router.push(`?account=${e.target.value}`);
+  };
 
   const toggle = (e, name) => {
     e.preventDefault();
@@ -75,7 +110,7 @@ export default function SidebarClient({ spaces, userEmail }) {
     return (
       <div key={space.name}>
         <Link 
-          href={`/inbox?space=${encodeURIComponent(space.name)}`}
+          href={`/inbox?space=${encodeURIComponent(space.name)}&account=${activeAccountId}`}
           style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -152,7 +187,6 @@ export default function SidebarClient({ spaces, userEmail }) {
         <div style={{ padding: '0 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h2 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '8px' }}>Organizer</h2>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{userEmail}</p>
           </div>
           <button 
             onClick={() => setIsDarkMode(!isDarkMode)}
@@ -162,6 +196,29 @@ export default function SidebarClient({ spaces, userEmail }) {
             {isDarkMode ? '☀️' : '🌙'}
           </button>
         </div>
+
+        {accounts.length > 0 && (
+          <div style={{ padding: '0 12px' }}>
+            <select
+              value={activeAccountId}
+              onChange={handleAccountChange}
+              style={{
+                width: '100%',
+                padding: '8px',
+                borderRadius: '8px',
+                background: 'var(--glass-bg)',
+                border: '1px solid var(--glass-border)',
+                color: 'var(--text-primary)',
+                outline: 'none',
+                fontSize: '0.9rem'
+              }}
+            >
+              {accounts.map(acc => (
+                <option key={acc.id} value={acc.id}>{acc.email}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <button 
           className="btn-primary" 
@@ -243,7 +300,7 @@ export default function SidebarClient({ spaces, userEmail }) {
       </aside>
 
       {isComposing && (
-        <ComposeModal onClose={() => setIsComposing(false)} userEmail={userEmail} />
+        <ComposeModal onClose={() => setIsComposing(false)} userEmail={accounts.find(a => a.id === activeAccountId)?.email || userEmail} initialAccountId={activeAccountId} />
       )}
     </>
   );
