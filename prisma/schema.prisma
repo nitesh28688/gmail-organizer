@@ -49,6 +49,7 @@ model User {
   aliases       Alias[]
   emailTrackings EmailTracking[]
   scheduledTasks ScheduledTask[]
+  auditRules     AuditRule[]
 }
 
 model VerificationToken {
@@ -101,6 +102,19 @@ model EmailTracking {
   createdAt   DateTime @default(now())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditRule {
+  id        String   @id @default(cuid())
+  name      String
+  query     String
+  labelName String
+  archive   Boolean  @default(false)
+  markRead  Boolean  @default(false)
+  enabled   Boolean  @default(true)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }
 
 model ScheduledTask {
