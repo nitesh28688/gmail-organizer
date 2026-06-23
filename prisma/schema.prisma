@@ -46,6 +46,8 @@ model User {
   labels        Label[]
   filters       Filter[]
   aliases       Alias[]
+  emailTrackings EmailTracking[]
+  scheduledTasks ScheduledTask[]
 }
 
 model VerificationToken {
@@ -86,4 +88,27 @@ model Alias {
   replyToAddress String
   userId         String
   user           User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EmailTracking {
+  id          String   @id @default(cuid())
+  messageId   String   @unique
+  subject     String
+  recipient   String
+  opened      Boolean  @default(false)
+  openedAt    DateTime?
+  createdAt   DateTime @default(now())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ScheduledTask {
+  id          String   @id @default(cuid())
+  type        String   // "SEND_LATER" or "SNOOZE"
+  executeAt   DateTime
+  payload     String   // JSON stringified payload
+  status      String   @default("PENDING") // PENDING, DONE, FAILED
+  createdAt   DateTime @default(now())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

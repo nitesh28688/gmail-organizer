@@ -10,8 +10,37 @@ export async function POST(req) {
   }
 
   try {
-    const { accountId, ...body } = await req.json();
-    const result = await sendEmail(session.user.id, accountId, body);
+    let { accountId, body, ...restBody } = await req.json();
+
+    // Generate a unique tracking ID
+    const trackingId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    
+    // Inject the invisible pixel at the end of the body
+    const trackingPixelUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/track?id=${trackingId}`;
+    const pixelHtml = `<img src="${trackingPixelUrl}" width="1" height="1" style="display:none;" />`;
+    
+    // Append to body (assuming body is HTML)
+    body = (body || "") + pixelHtml;
+
+    const result = await sendEmail(session.user.id, accountId, { body, ...restBody });
+
+    // Store tracking info in DB
+    try {
+      const { PrismaClient } = require("@prisma/client");
+      const prisma = new PrismaClient();
+      await prisma.emailTracking.create({
+        data: {
+          id: trackingId,
+          messageId: result.data?.id || trackingId,
+          subject: restBody.subject || "(No Subject)",
+          recipient: restBody.to || "",
+          userId: session.user.id
+        }
+      });
+    } catch(dbErr) {
+      console.error("Failed to store tracking info", dbErr);
+    }
+
     return NextResponse.json({ success: true, result });
   } catch (error) {
     console.error("Failed to send email:", error);

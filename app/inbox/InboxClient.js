@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import ComposeModal from "./ComposeModal";
 import AIAssistant from "./AIAssistant";
+import CmdKPalette from "./CmdKPalette";
 
 export default function InboxPage() {
   const searchParams = useSearchParams();
@@ -136,6 +137,38 @@ export default function InboxPage() {
     e.preventDefault();
     fetchInbox();
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+      if (e.key === 'j' && !activeEmail) {
+        // Move focus down (simple simulation for now by selecting first or next)
+      } else if (e.key === 'r' && activeEmail) {
+        setComposeTo(activeEmail.from);
+        setComposeSubject(`Re: ${activeEmail.subject}`);
+        setComposeOpen(true);
+      } else if (e.key === 'c') {
+        setComposeTo("");
+        setComposeSubject("");
+        setComposeOpen(true);
+      } else if (e.key === 'Escape' && activeEmail) {
+        setActiveEmail(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeEmail]);
+
+  useEffect(() => {
+    const openCompose = () => {
+      setComposeTo("");
+      setComposeSubject("");
+      setComposeOpen(true);
+    };
+    window.addEventListener("openCompose", openCompose);
+    return () => window.removeEventListener("openCompose", openCompose);
+  }, []);
 
   const toggleSelect = (e, id) => {
     e.stopPropagation();
@@ -683,6 +716,15 @@ export default function InboxPage() {
           {toast}
         </div>
       )}
+
+      <CmdKPalette 
+        accounts={initialAccounts} 
+        activeAccountId={activeAccountId}
+        onSelectAccount={(id) => {
+          router.push(`/inbox?account=${id}`);
+          setActiveAccountId(id);
+        }}
+      />
     </div>
   );
 }
