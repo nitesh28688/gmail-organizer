@@ -35,17 +35,35 @@ export async function POST(request) {
       .filter(m => m.supportedGenerationMethods.includes("generateContent"))
       .map(m => m.name.replace('models/', ''));
 
-    let bestModel = available.find(n => n === "gemini-1.5-flash") || 
-                    available.find(n => n === "gemini-1.5-pro") || 
-                    available.find(n => n.includes("flash")) || 
-                    available.find(n => n.includes("pro")) || 
-                    available[0];
+    if (available.length === 0) throw new Error("No compatible models found for this API key.");
 
-    if (!bestModel) throw new Error(`No compatible models found. Available: ${available.join(", ")}`);
+    // Order models by preference: flash -> pro -> others
+    available.sort((a, b) => {
+      if (a.includes("flash") && !b.includes("flash")) return -1;
+      if (b.includes("flash") && !a.includes("flash")) return 1;
+      if (a.includes("pro") && !b.includes("pro")) return -1;
+      if (b.includes("pro") && !a.includes("pro")) return 1;
+      return 0;
+    });
 
-    const model = genAI.getGenerativeModel({ model: bestModel });
     const prompt = `Generate 3 short, realistic, and distinct quick reply options for this email. Return ONLY a JSON array of 3 strings (e.g. ["Yes, sounds good.", "No, thanks.", "Let's discuss next week."]). Email content:\n\n${emailContent.substring(0, 3000)}`;
-    const result = await model.generateContent(prompt);
+    
+    let result;
+    let lastError;
+
+    for (const modelName of available) {
+      if (modelName.includes("vision")) continue;
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        result = await model.generateContent(prompt);
+        break; // Success!
+      } catch (e) {
+        console.warn(`Model ${modelName} failed:`, e.message);
+        lastError = e;
+      }
+    }
+
+    if (!result) throw lastError;
     
     const response = await result.response;
     const text = response.text().trim();
