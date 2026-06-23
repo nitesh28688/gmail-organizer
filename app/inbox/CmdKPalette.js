@@ -3,12 +3,22 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-export default function CmdKPalette({ accounts, activeAccountId, onSelectAccount }) {
+export default function CmdKPalette({ activeAccountId, onSelectAccount }) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [accounts, setAccounts] = useState([]);
   const inputRef = useRef(null);
   const router = useRouter();
+
+  useEffect(() => {
+    fetch("/api/gmail/accounts")
+      .then(res => res.json())
+      .then(data => {
+        if (data.accounts) setAccounts(data.accounts);
+      })
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e) => {

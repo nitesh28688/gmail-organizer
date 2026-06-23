@@ -718,11 +718,10 @@ export default function InboxPage() {
       )}
 
       <CmdKPalette 
-        accounts={initialAccounts} 
+        accounts={[]} 
         activeAccountId={activeAccountId}
         onSelectAccount={(id) => {
-          router.push(`/inbox?account=${id}`);
-          setActiveAccountId(id);
+          window.location.href = `/inbox?account=${id}`;
         }}
       />
     </div>
