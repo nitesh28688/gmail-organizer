@@ -45,6 +45,11 @@ export default function InboxPage() {
   // Multi-Select State
   const [selectedEmails, setSelectedEmails] = useState([]);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [nextPageToken, setNextPageToken] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [threadSearch, setThreadSearch] = useState("");
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const touchStartX = useRef(null);
 
   // Toast State
   const [toast, setToast] = useState(null);
@@ -60,6 +65,14 @@ export default function InboxPage() {
     }, 60000);
     return () => clearInterval(intervalId);
   }, []);
+
+  // Auto-refresh inbox every 60s when idle (no email open, no compose)
+  useEffect(() => {
+    const refreshId = setInterval(() => {
+      if (!activeEmail && !composeOpen) fetchInbox();
+    }, 60000);
+    return () => clearInterval(refreshId);
+  }, [activeEmail, composeOpen]);
 
   const handleComposeClose = async (result) => {
     setComposeOpen(false);
@@ -182,6 +195,7 @@ export default function InboxPage() {
 
   const handleEmailClick = async (email) => {
     setActiveEmail({ ...email, isLoading: true, threadMessages: [] });
+    setThreadSearch("");
     try {
       const res = await fetch(`/api/gmail/thread?threadId=${email.threadId}&accountId=${email.accountId}`);
       const data = await res.json();
@@ -226,9 +240,30 @@ export default function InboxPage() {
     finally { setCreatingLabel(false); setNewLabelName(""); }
   };
 
+  const buildQuery = () => {
+    let baseQuery = "";
+    if (space === "Inbox") baseQuery = "in:inbox";
+    else if (space === "All Mail") baseQuery = "-in:trash";
+    else if (space === "Drafts") baseQuery = "in:draft";
+    else if (space === "Sent") baseQuery = "in:sent";
+    else if (space === "Trash") baseQuery = "in:trash";
+    else if (space === "Linear Ventures") baseQuery = "(to:linearventures.in OR from:linearventures.in) -in:trash -in:draft";
+    else if (space === "Nanoliss") baseQuery = "(to:nanoliss.in OR from:nanoliss.in OR to:nanoliss.com OR from:nanoliss.com) -in:trash -in:draft";
+    else if (space === "Services") baseQuery = "(receipt OR invoice OR order OR service) -in:trash -in:draft";
+    else if (space === "Finance") baseQuery = "(bank OR statement OR payment OR finance) -in:trash -in:draft";
+    else baseQuery = `(to:${space} OR from:${space}) -in:trash -in:draft`;
+    let q = baseQuery;
+    if (searchQuery) q += ` ${searchQuery}`;
+    if (filterTo) q += ` to:${filterTo}`;
+    if (filterFrom) q += ` from:${filterFrom}`;
+    if (filterSubject) q += ` subject:${filterSubject}`;
+    if (filterAttachment) q += ` has:attachment`;
+    if (filterUnread) q += ` is:unread`;
+    return q.trim();
+  };
+
   const fetchInbox = async () => {
     const isBasicQuery = !searchQuery && !filterTo && !filterFrom && !filterSubject && !filterAttachment;
-    
     const cacheKey = `${space}_${activeAccountId}`;
     if (isBasicQuery && typeof window !== 'undefined' && window.emailCache && window.emailCache[cacheKey]) {
       setEmails(window.emailCache[cacheKey]);
@@ -236,34 +271,15 @@ export default function InboxPage() {
     } else {
       setLoading(true);
     }
-    
     setActiveEmail(null);
     setSelectedEmails([]);
+    setNextPageToken(null);
     try {
-      let baseQuery = "";
-      if (space === "Inbox") baseQuery = "in:inbox";
-      else if (space === "All Mail") baseQuery = "-in:trash";
-      else if (space === "Drafts") baseQuery = "in:draft";
-      else if (space === "Sent") baseQuery = "in:sent";
-      else if (space === "Trash") baseQuery = "in:trash";
-      else if (space === "Linear Ventures") baseQuery = "(to:linearventures.in OR from:linearventures.in) -in:trash -in:draft";
-      else if (space === "Nanoliss") baseQuery = "(to:nanoliss.in OR from:nanoliss.in OR to:nanoliss.com OR from:nanoliss.com) -in:trash -in:draft";
-      else if (space === "Services") baseQuery = "(receipt OR invoice OR order OR service) -in:trash -in:draft";
-      else if (space === "Finance") baseQuery = "(bank OR statement OR payment OR finance) -in:trash -in:draft";
-      else baseQuery = `(to:${space} OR from:${space}) -in:trash -in:draft`;
-
-      let finalQuery = baseQuery;
-      if (searchQuery) finalQuery += ` ${searchQuery}`;
-      if (filterTo) finalQuery += ` to:${filterTo}`;
-      if (filterFrom) finalQuery += ` from:${filterFrom}`;
-      if (filterSubject) finalQuery += ` subject:${filterSubject}`;
-      if (filterAttachment) finalQuery += ` has:attachment`;
-      if (filterUnread) finalQuery += ` is:unread`;
-
-      const res = await fetch(`/api/gmail/messages?q=${encodeURIComponent(finalQuery.trim())}&accountId=${activeAccountId}`);
+      const finalQuery = buildQuery();
+      const res = await fetch(`/api/gmail/messages?q=${encodeURIComponent(finalQuery)}&accountId=${activeAccountId}`);
       const data = await res.json();
       setEmails(data.emails || []);
-      
+      setNextPageToken(data.nextPageToken || null);
       if (isBasicQuery && typeof window !== 'undefined') {
         window.emailCache = window.emailCache || {};
         window.emailCache[cacheKey] = data.emails || [];
@@ -272,6 +288,22 @@ export default function InboxPage() {
       console.error("Failed to load emails", e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMore = async () => {
+    if (!nextPageToken || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const finalQuery = buildQuery();
+      const res = await fetch(`/api/gmail/messages?q=${encodeURIComponent(finalQuery)}&accountId=${activeAccountId}&pageToken=${nextPageToken}`);
+      const data = await res.json();
+      setEmails(prev => [...prev, ...(data.emails || [])]);
+      setNextPageToken(data.nextPageToken || null);
+    } catch (e) {
+      console.error("Failed to load more emails", e);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -470,6 +502,28 @@ export default function InboxPage() {
     }
   };
 
+  const handleArchiveSelected = async () => {
+    if (selectedEmails.length === 0) return;
+    setIsDeleting(true);
+    try {
+      const messages = emails.filter(e => selectedEmails.includes(e.id)).map(e => ({ id: e.id, accountId: e.accountId }));
+      const res = await fetch("/api/gmail/archive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages })
+      });
+      if (!res.ok) throw new Error("Archive failed");
+      showToast(`${selectedEmails.length} messages archived 📦`);
+      if (selectedEmails.includes(activeEmail?.id)) setActiveEmail(null);
+      setSelectedEmails([]);
+      fetchInbox();
+    } catch (e) {
+      showToast("Error archiving messages");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const isSentSpace = space === "Sent";
   const isDraftSpace = space === "Drafts";
   const isTrashSpace = space === "Trash";
@@ -534,7 +588,21 @@ export default function InboxPage() {
               <button type="button" onClick={() => setShowFilters(!showFilters)} style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '24px', padding: '0 16px', color: 'var(--text-primary)', cursor: 'pointer', height: '38px' }}>
                 ⚙️
               </button>
+              <button type="button" onClick={() => setShowShortcuts(s => !s)} title="Keyboard shortcuts" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '24px', padding: '0 12px', color: 'var(--text-secondary)', cursor: 'pointer', height: '38px', fontWeight: '700', fontSize: '0.9rem' }}>
+                ?
+              </button>
             </div>
+            {showShortcuts && (
+              <div className="pop-in" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '16px', marginTop: '8px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', fontSize: '0.82rem' }}>
+                <div style={{ gridColumn: '1/-1', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Keyboard Shortcuts</div>
+                {[['c', 'Compose'], ['r', 'Reply to open email'], ['Esc', 'Close email'], ['⌘/Ctrl+K', 'Command palette']].map(([key, label]) => (
+                  <div key={key} style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+                    <kbd style={{ background: 'var(--bg-surface)', border: '1px solid var(--glass-border)', borderRadius: '4px', padding: '2px 7px', fontFamily: 'monospace', color: 'var(--text-primary)' }}>{key}</kbd>
+                    <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             {showFilters && (
               <div className="pop-in" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--glass-bg)', borderRadius: '12px', border: '1px solid var(--glass-border)', marginTop: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -608,8 +676,15 @@ export default function InboxPage() {
                     >
                       ✉️ Unread
                     </button>
-                    <button 
-                      onClick={handleDeleteSelected} 
+                    <button
+                      onClick={handleArchiveSelected}
+                      disabled={isDeleting}
+                      style={{ background: 'var(--glass-bg)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)', padding: '4px 12px', borderRadius: '16px', fontSize: '0.8rem', cursor: 'pointer', opacity: isDeleting ? 0.5 : 1 }}
+                    >
+                      📦 Archive
+                    </button>
+                    <button
+                      onClick={handleDeleteSelected}
                       disabled={isDeleting}
                       style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 12px', borderRadius: '16px', fontSize: '0.8rem', cursor: 'pointer', opacity: isDeleting ? 0.5 : 1 }}
                     >
@@ -651,7 +726,8 @@ export default function InboxPage() {
             </p>
           </div>
         ) : (
-          emails.map(email => {
+          <>
+          {emails.map(email => {
             const displayParticipant = isSentSpace || isDraftSpace ? `To: ${email.to}` : email.from;
             const isSelected = selectedEmails.includes(email.id);
             const isActive = activeEmail?.id === email.id;
@@ -727,12 +803,34 @@ export default function InboxPage() {
                 </div>
               </div>
             );
-          })
+          })}
+          {nextPageToken && (
+            <div style={{ padding: '16px', display: 'flex', justifyContent: 'center' }}>
+              <button
+                onClick={fetchMore}
+                disabled={loadingMore}
+                style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', padding: '10px 24px', borderRadius: '24px', cursor: loadingMore ? 'default' : 'pointer', fontSize: '0.9rem', opacity: loadingMore ? 0.6 : 1 }}
+              >
+                {loadingMore ? 'Loading...' : 'Load more'}
+              </button>
+            </div>
+          )}
+          </>
         )}
       </div>
 
       {/* Reading Pane / Draft Compose */}
-      <div className={`mobile-full-pane ${!activeEmail ? 'mobile-hidden' : ''}`} style={{ flex: 1, height: '100%', overflowY: 'auto', background: 'var(--glass-bg)', position: 'relative' }}>
+      <div
+        className={`mobile-full-pane ${!activeEmail ? 'mobile-hidden' : ''}`}
+        style={{ flex: 1, height: '100%', overflowY: 'auto', background: 'var(--glass-bg)', position: 'relative' }}
+        onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+        onTouchEnd={(e) => {
+          if (touchStartX.current === null) return;
+          const dx = e.changedTouches[0].clientX - touchStartX.current;
+          if (dx > 60) setActiveEmail(null); // swipe right to go back
+          touchStartX.current = null;
+        }}
+      >
         {activeEmail?.isLoading ? (
           <div className="flex-center" style={{ height: '100%', color: 'var(--text-secondary)' }}>
             <div className="spinner" style={{ width: '24px', height: '24px', marginRight: '8px' }}></div>
@@ -782,9 +880,9 @@ export default function InboxPage() {
                 </button>
                 <h2 style={{ fontSize: '1.8rem', fontWeight: '700', margin: 0 }}>{activeEmail.subject}</h2>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid var(--glass-border)', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid var(--glass-border)', gap: '12px', flexWrap: 'wrap' }}>
                   <div style={{ position: 'relative' }}>
-                    <button onClick={() => setSnoozeMenuOpen(!snoozeMenuOpen)} style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', cursor: 'pointer' }}>Snooze</button>
+                    <button onClick={() => setSnoozeMenuOpen(!snoozeMenuOpen)} className="thread-action-btn" style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', cursor: 'pointer' }}>⏰ Snooze</button>
                     {snoozeMenuOpen && (
                        <div className="pop-in" style={{ position: 'absolute', top: '100%', right: 0, marginTop: '4px', background: 'var(--bg-surface)', border: '1px solid var(--glass-border)', borderRadius: '8px', zIndex: 10, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                          <button onClick={() => handleSnooze(activeEmail, "LATER_TODAY")} style={{ padding: '8px 16px', background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap' }}>Later Today (6 PM)</button>
@@ -794,7 +892,7 @@ export default function InboxPage() {
                     )}
                   </div>
                   <div style={{ position: 'relative' }}>
-                    <button onClick={() => { if(!moveMenuOpen) fetchLabels(); setMoveMenuOpen(!moveMenuOpen); }} style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', cursor: 'pointer' }}>Move To</button>
+                    <button onClick={() => { if(!moveMenuOpen) fetchLabels(); setMoveMenuOpen(!moveMenuOpen); }} className="thread-action-btn" style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', cursor: 'pointer' }}>📁 Move To</button>
                     {moveMenuOpen && (
                        <div className="pop-in" style={{ position: 'absolute', top: '100%', right: 0, marginTop: '4px', background: 'var(--bg-surface)', border: '1px solid var(--glass-border)', borderRadius: '8px', zIndex: 10, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: '200px', maxHeight: '300px', overflowY: 'auto', zIndex: 20 }}>
                          {userLabels.map(l => (
@@ -822,31 +920,47 @@ export default function InboxPage() {
                         showToast("Error deleting thread");
                       }
                     }}
+                    className="thread-action-btn"
                     style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', cursor: 'pointer' }}
                   >
-                    Delete
+                    🗑️ Delete
                   </button>
               </div>
 
-              {/* AIAssistant Actions */}
-              {activeEmail.threadMessages && activeEmail.threadMessages.length > 0 && (
-                <div style={{ marginBottom: '24px' }}>
-                  <AIAssistant 
-                    emailContent={activeEmail.threadMessages.map(m => m.text || m.html?.replace(/<[^>]+>/g, '')).join('\n')}
-                    onAction={(action, result) => {
-                      if (action === 'reply') {
-                        setComposeTo(activeEmail.from);
-                        setComposeSubject(activeEmail.subject.startsWith('Re:') ? activeEmail.subject : `Re: ${activeEmail.subject}`);
-                        setComposeBody(result);
-                        setComposeOpen(true);
-                      }
-                    }}
+              {/* Unsubscribe banner */}
+              {activeEmail.threadMessages?.some(m => m.unsubscribeUrl) && (
+                <div style={{ marginBottom: '16px', padding: '10px 16px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                  <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>This is a mailing list email.</span>
+                  <a
+                    href={activeEmail.threadMessages.find(m => m.unsubscribeUrl)?.unsubscribeUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: '0.85rem', color: 'var(--accent)', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}
+                  >
+                    Unsubscribe →
+                  </a>
+                </div>
+              )}
+
+              {/* In-thread search */}
+              {activeEmail.threadMessages && activeEmail.threadMessages.length > 1 && (
+                <div style={{ marginBottom: '16px' }}>
+                  <input
+                    type="text"
+                    placeholder="Search in thread…"
+                    value={threadSearch}
+                    onChange={e => setThreadSearch(e.target.value)}
+                    style={{ width: '100%', padding: '8px 16px', borderRadius: '24px', border: '1px solid var(--glass-border)', background: 'var(--glass-bg)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.9rem' }}
                   />
                 </div>
               )}
 
               {/* Thread Messages */}
-              {activeEmail.threadMessages && activeEmail.threadMessages.map((msg, index) => (
+              {activeEmail.threadMessages && activeEmail.threadMessages.filter(msg => {
+                if (!threadSearch) return true;
+                const q = threadSearch.toLowerCase();
+                return (msg.from || '').toLowerCase().includes(q) || (msg.text || '').toLowerCase().includes(q) || (msg.subject || '').toLowerCase().includes(q);
+              }).map((msg, index) => (
                 <div key={msg.id} style={{ marginBottom: '24px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '16px', overflow: 'hidden' }}>
                   <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--glass-border)', background: 'var(--glass-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
@@ -864,7 +978,7 @@ export default function InboxPage() {
                       <iframe 
                         title={`msg-${msg.id}`}
                         srcDoc={`<!DOCTYPE html><html><head><style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #000000 !important; background-color: #ffffff !important; padding: 24px; margin: 0; word-wrap: break-word; } a { color: #2563eb; text-decoration: none; } a:hover { text-decoration: underline; } img { max-width: 100%; height: auto; border-radius: 4px; } table, div, td { color: inherit; }</style></head><body>${msg.html}</body></html>`}
-                        style={{ width: '100%', height: '100%', minHeight: '350px', border: 'none', background: '#ffffff' }}
+                        style={{ width: '100%', height: '100%', minHeight: '350px', border: 'none', background: '#ffffff', borderRadius: '0 0 14px 14px', display: 'block' }}
                       />
                     ) : (
                       <div style={{ width: '100%', height: '100%', overflowY: 'auto' }}>
@@ -907,8 +1021,25 @@ export default function InboxPage() {
                 </div>
               ))}
 
-              {/* Reply/Forward actions (use last message context) */}
-              <div style={{ marginTop: '32px', display: 'flex', gap: '12px' }}>
+              {/* AI Assistant — sits close to reply actions for context */}
+              {activeEmail.threadMessages && activeEmail.threadMessages.length > 0 && (
+                <div style={{ marginTop: '24px', marginBottom: '8px' }}>
+                  <AIAssistant
+                    emailContent={activeEmail.threadMessages.map(m => m.text || m.html?.replace(/<[^>]+>/g, '')).join('\n')}
+                    onAction={(action, result) => {
+                      if (action === 'reply') {
+                        setComposeTo(activeEmail.from);
+                        setComposeSubject(activeEmail.subject.startsWith('Re:') ? activeEmail.subject : `Re: ${activeEmail.subject}`);
+                        setComposeBody(result);
+                        setComposeOpen(true);
+                      }
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Reply/Forward actions */}
+              <div style={{ marginTop: '16px', display: 'flex', gap: '12px' }}>
                 <button 
                   onClick={() => {
                     const lastMsg = activeEmail.threadMessages?.[activeEmail.threadMessages.length - 1] || activeEmail;
@@ -918,11 +1049,12 @@ export default function InboxPage() {
                     setComposeBody('');
                     setComposeOpen(true);
                   }}
+                  className="thread-action-btn"
                   style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
-                  Reply
+                  ↩ Reply
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     const lastMsg = activeEmail.threadMessages?.[activeEmail.threadMessages.length - 1] || activeEmail;
                     setComposeTo('');
@@ -930,9 +1062,10 @@ export default function InboxPage() {
                     setComposeBody(`\n\n---------- Forwarded message ---------\nFrom: ${lastMsg.from}\nDate: ${lastMsg.date}\nSubject: ${lastMsg.subject}\nTo: ${lastMsg.to}\n\n${lastMsg.text || ''}`);
                     setComposeOpen(true);
                   }}
+                  className="thread-action-btn"
                   style={{ background: 'var(--glass-bg)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)', padding: '10px 24px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
-                  Forward
+                  ↪ Forward
                 </button>
               </div>
             </div>

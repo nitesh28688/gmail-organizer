@@ -10,10 +10,11 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q") || "";
   const accountId = searchParams.get("accountId") || null;
+  const pageToken = searchParams.get("pageToken") || null;
 
   try {
-    const emails = await fetchEmails(session.user.id, accountId, q);
-    return NextResponse.json({ emails });
+    const { emails, nextPageToken } = await fetchEmails(session.user.id, accountId, q, pageToken);
+    return NextResponse.json({ emails, nextPageToken });
   } catch (error) {
     console.error("Fetch Emails Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

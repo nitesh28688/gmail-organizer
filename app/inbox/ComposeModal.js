@@ -26,29 +26,34 @@ export default function ComposeModal({
   const [attachments, setAttachments] = useState(initialAttachments);
   
   const [draftId, setDraftId] = useState(initialDraftId);
-  const [saveStatus, setSaveStatus] = useState(""); // "Saving...", "Saved"
+  const [saveStatus, setSaveStatus] = useState("");
 
   const [aiLoading, setAiLoading] = useState(false);
 
   const toDropdownRef = useRef(null);
   const ccDropdownRef = useRef(null);
   const bccDropdownRef = useRef(null);
+  const editorRef = useRef(null);
+  const autoSaveTimer = useRef(null);
 
-  // Auto-save logic (debounced)
-  const isFirstRender = useRef(true);
+  // Set initial body content once on mount
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
+    if (editorRef.current && initialBody) {
+      editorRef.current.innerHTML = initialBody.replace(/\n/g, '<br>');
     }
-    
-    // Only auto-save if there is some content
-    if (!to && !cc && !bcc && !subject && !body && attachments.length === 0) return;
+  }, []);
 
-    setSaveStatus("Saving...");
-    const timeoutId = setTimeout(async () => {
+  const getBodyHTML = () => editorRef.current?.innerHTML || '';
+
+  const triggerAutoSave = () => {
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    const currentTo = to; // captured at call time via closure refresh below
+    autoSaveTimer.current = setTimeout(async () => {
+      const html = getBodyHTML();
+      if (!to && !cc && !bcc && !subject && !html && attachments.length === 0) return;
+      setSaveStatus("Saving…");
       try {
-        const payload = { draftId, to, cc, bcc, subject, body, from, attachments, accountId: initialAccountId };
+        const payload = { draftId, to, cc, bcc, subject, body: html, from, attachments, accountId: initialAccountId };
         const res = await fetch("/api/gmail/draft", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -57,16 +62,20 @@ export default function ComposeModal({
         const data = await res.json();
         if (data.draftId) {
           setDraftId(data.draftId);
-          setSaveStatus("Saved to Drafts");
-          setTimeout(() => setSaveStatus(""), 3000);
+          setSaveStatus("Saved");
+          setTimeout(() => setSaveStatus(""), 2500);
         }
-      } catch (e) {
-        setSaveStatus("Error saving draft");
+      } catch {
+        setSaveStatus("Save failed");
       }
     }, 2000);
+  };
 
-    return () => clearTimeout(timeoutId);
-  }, [to, cc, bcc, subject, body, from, attachments]);
+  // Trigger auto-save when header fields change
+  useEffect(() => {
+    triggerAutoSave();
+    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
+  }, [to, cc, bcc, subject, from, attachments]);
 
   const [aliases, setAliases] = useState([]);
 
@@ -93,7 +102,7 @@ export default function ComposeModal({
       bcc,
       from,
       subject,
-      body,
+      body: getBodyHTML(),
       attachments
     };
 
@@ -138,23 +147,23 @@ export default function ComposeModal({
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const textareaRef = useRef(null);
+  const savedSelectionRef = useRef(null);
   const [aiMenuOpen, setAiMenuOpen] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [scheduleTime, setScheduleTime] = useState("");
 
   const handleAIDraft = async (command) => {
-    if (!textareaRef.current) return;
-    const start = textareaRef.current.selectionStart;
-    const end = textareaRef.current.selectionEnd;
-    const selectedText = body.substring(start, end);
-    
-    if (selectedText.trim().length === 0) {
+    const selection = window.getSelection();
+    const selectedText = selection?.toString().trim();
+
+    if (!selectedText) {
       alert("Please highlight some text in the email body first to use AI editing!");
       setAiMenuOpen(false);
       return;
     }
 
+    // Save the selection range so we can replace it after the async call
+    const range = selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null;
     setAiMenuOpen(false);
     setAiLoading(true);
 
@@ -167,8 +176,10 @@ export default function ComposeModal({
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 
-      const newBody = body.substring(0, start) + data.result + body.substring(end);
-      setBody(newBody);
+      if (range) {
+        range.deleteContents();
+        range.insertNode(document.createTextNode(data.result));
+      }
     } catch (error) {
       alert("AI Drafting Error: " + error.message);
     } finally {
@@ -189,6 +200,7 @@ export default function ComposeModal({
       bottom: '24px',
       right: '24px',
       width: '500px',
+      minHeight: '480px',
       background: 'var(--bg-surface)',
       border: '1px solid var(--glass-border)',
       borderRadius: '16px',
@@ -299,27 +311,66 @@ export default function ComposeModal({
           />
         </div>
 
-        <div style={{ position: 'relative' }}>
-          <textarea 
-            ref={textareaRef}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            style={{ 
-              width: '100%',
-              height: '250px', 
-              padding: '16px', 
-              background: 'transparent', 
-              border: 'none', 
-              color: 'var(--text-primary)', 
-              outline: 'none',
-              resize: 'none',
-              fontFamily: 'inherit'
+        {/* Rich text toolbar */}
+        <div style={{ display: 'flex', gap: '4px', padding: '6px 12px', borderBottom: '1px solid var(--glass-border)', background: 'var(--glass-bg)' }}>
+          {[
+            { cmd: 'bold',      label: <b>B</b> },
+            { cmd: 'italic',    label: <i>I</i> },
+            { cmd: 'underline', label: <u>U</u> },
+          ].map(({ cmd, label }) => (
+            <button
+              key={cmd}
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); document.execCommand(cmd); editorRef.current?.focus(); }}
+              style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', borderRadius: '4px', padding: '2px 10px', cursor: 'pointer', fontSize: '0.9rem' }}
+            >
+              {label}
+            </button>
+          ))}
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              const url = window.prompt('Link URL:');
+              if (url) { document.execCommand('createLink', false, url); editorRef.current?.focus(); }
             }}
-            placeholder="Type your message here. Highlight text and click 'AI Draft' to edit!"
+            style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', borderRadius: '4px', padding: '2px 10px', cursor: 'pointer', fontSize: '0.85rem' }}
+          >
+            🔗
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); document.execCommand('removeFormat'); editorRef.current?.focus(); }}
+            style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)', borderRadius: '4px', padding: '2px 10px', cursor: 'pointer', fontSize: '0.75rem' }}
+            title="Clear formatting"
+          >
+            Tx
+          </button>
+        </div>
+
+        <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <div
+            ref={editorRef}
+            contentEditable="true"
+            suppressContentEditableWarning={true}
+            onInput={triggerAutoSave}
+            style={{
+              flex: 1,
+              minHeight: '220px',
+              padding: '16px',
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-primary)',
+              outline: 'none',
+              fontFamily: 'inherit',
+              lineHeight: '1.6',
+              overflowY: 'auto',
+            }}
+            data-placeholder="Type your message… Highlight text and click ✨ AI Draft to edit."
           />
           {aiLoading && (
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold' }}>
-              ✨ AI is drafting...
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', borderRadius: '4px' }}>
+              ✨ AI is drafting…
             </div>
           )}
         </div>
