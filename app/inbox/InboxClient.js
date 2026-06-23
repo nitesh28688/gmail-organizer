@@ -97,8 +97,8 @@ export default function InboxPage() {
       if (result.draftId) {
         fetch("/api/gmail/draft", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draftId: result.draftId, accountId: result.payload.accountId }) }).catch(e => console.error(e));
         if (space === "Drafts") {
-          setEmails(prev => prev.filter(m => m.id !== result.draftId));
           setActiveEmail(null);
+          fetchInbox();
         }
       }
 
@@ -190,7 +190,7 @@ export default function InboxPage() {
       const res = await fetch(`/api/gmail/labels?accountId=${activeAccountId}`);
       const data = await res.json();
       if (data.labels) setUserLabels(data.labels);
-    } catch(e) {}
+    } catch(e) { console.error("Failed to fetch labels", e); }
   };
 
   const handleEmailClick = async (email) => {
@@ -843,7 +843,7 @@ export default function InboxPage() {
               initialDraftId={activeEmail.id}
               initialTo={activeEmail.to}
               initialSubject={activeEmail.subject}
-              initialBody={activeEmail.threadMessages?.[activeEmail.threadMessages.length - 1]?.text || activeEmail.threadMessages?.[activeEmail.threadMessages.length - 1]?.html?.replace(/<br\\s*[\\/]?>/gi, '\\n').replace(/<[^>]+>/g, '') || ""}
+              initialBody={activeEmail.threadMessages?.[activeEmail.threadMessages.length - 1]?.html || activeEmail.threadMessages?.[activeEmail.threadMessages.length - 1]?.text || ""}
               initialAttachments={activeEmail.attachments || []}
               contacts={contacts || []}
               isInline={true}

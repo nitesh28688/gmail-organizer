@@ -39,7 +39,8 @@ export default function ComposeModal({
   // Set initial body content once on mount
   useEffect(() => {
     if (editorRef.current && initialBody) {
-      editorRef.current.innerHTML = initialBody.replace(/\n/g, '<br>');
+      const isHTML = /<[a-z][\s\S]*>/i.test(initialBody);
+      editorRef.current.innerHTML = isHTML ? initialBody : initialBody.replace(/\n/g, '<br>');
     }
   }, []);
 
