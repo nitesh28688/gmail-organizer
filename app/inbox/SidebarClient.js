@@ -10,7 +10,7 @@ export default function SidebarClient({ spaces, userEmail }) {
   const searchParams = useSearchParams();
   const currentSpace = searchParams.get("space") || "All Mail";
   const [isComposing, setIsComposing] = useState(false);
-  const [expanded, setExpanded] = useState({ "Linear Ventures": true, "Nanoliss": true });
+  const [expanded, setExpanded] = useState({ "Linear Ventures": false, "Nanoliss": false });
   const [counts, setCounts] = useState({});
   const [isLoadingCounts, setIsLoadingCounts] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
