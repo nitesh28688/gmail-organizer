@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../../auth/[...nextauth]/route";
-import { markAsUnread } from "../../../../../lib/gmail";
+import { authOptions } from "../../auth/[...nextauth]/route";
+import { markAsUnread } from "../../../../lib/gmail";
 import { NextResponse } from "next/server";
 
 export async function POST(request) {
