@@ -23,10 +23,17 @@ export async function POST(request) {
       });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-    const prompt = `Generate 3 short, realistic, and distinct quick reply options for this email. Return ONLY a JSON array of 3 strings (e.g. ["Yes, sounds good.", "No, thanks.", "Let's discuss next week."]). Email content:\n\n${emailContent.substring(0, 3000)}`;
-
-    const result = await model.generateContent(prompt);
+    let result;
+    try {
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+      const prompt = `Generate 3 short, realistic, and distinct quick reply options for this email. Return ONLY a JSON array of 3 strings (e.g. ["Yes, sounds good.", "No, thanks.", "Let's discuss next week."]). Email content:\n\n${emailContent.substring(0, 3000)}`;
+      result = await model.generateContent(prompt);
+    } catch (fallbackError) {
+      console.warn("Falling back to gemini-pro...", fallbackError.message);
+      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+      const prompt = `Generate 3 short, realistic, and distinct quick reply options for this email. Return ONLY a JSON array of 3 strings (e.g. ["Yes, sounds good.", "No, thanks.", "Let's discuss next week."]). Email content:\n\n${emailContent.substring(0, 3000)}`;
+      result = await model.generateContent(prompt);
+    }
     const response = await result.response;
     const text = response.text().trim();
     

@@ -17,10 +17,17 @@ export async function POST(request) {
       return NextResponse.json({ summary: "AI Summarization requires a GEMINI_API_KEY in your environment variables. Please add one to try this feature!" });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-    const prompt = `Summarize the following email in 3 short, punchy bullet points. Focus only on the most critical information:\n\n${emailContent.substring(0, 5000)}`;
-
-    const result = await model.generateContent(prompt);
+    let result;
+    try {
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+      const prompt = `Summarize the following email in 3 short, punchy bullet points. Focus only on the most critical information:\n\n${emailContent.substring(0, 5000)}`;
+      result = await model.generateContent(prompt);
+    } catch (fallbackError) {
+      console.warn("Falling back to gemini-pro...", fallbackError.message);
+      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+      const prompt = `Summarize the following email in 3 short, punchy bullet points. Focus only on the most critical information:\n\n${emailContent.substring(0, 5000)}`;
+      result = await model.generateContent(prompt);
+    }
     const response = await result.response;
     const text = response.text();
 

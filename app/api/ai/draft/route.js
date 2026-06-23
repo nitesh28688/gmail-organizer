@@ -20,16 +20,23 @@ export async function POST(request) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
     let prompt = "";
     if (command === "Formalize") prompt = `Rewrite the following text to be more formal and professional, suitable for a business email. Output ONLY the rewritten text, nothing else. Text:\n\n${text}`;
-    else if (command === "Fix Spelling & Grammar") prompt = `Fix any spelling or grammar mistakes in the following text. Do not change the tone. Output ONLY the corrected text, nothing else. Text:\n\n${text}`;
-    else if (command === "Make Professional") prompt = `Rewrite the following text to sound highly professional, polite, and polished. Output ONLY the rewritten text, nothing else. Text:\n\n${text}`;
-    else if (command === "Make Concise") prompt = `Rewrite the following text to be more concise and to the point. Output ONLY the rewritten text, nothing else. Text:\n\n${text}`;
-    else prompt = `Process this text according to the command: "${command}". Output ONLY the result. Text:\n\n${text}`;
+    else if (command === "Fix Spelling & Grammar") prompt = `Fix all spelling and grammar mistakes in the following text. Do not change the meaning. Output ONLY the corrected text, nothing else. Text:\n\n${text}`;
+    else if (command === "Make Professional") prompt = `Rewrite the following text to sound extremely professional and polite. Output ONLY the rewritten text. Text:\n\n${text}`;
+    else if (command === "Make Concise") prompt = `Rewrite the following text to be as concise and brief as possible without losing the core meaning. Output ONLY the rewritten text. Text:\n\n${text}`;
+    else prompt = `Rewrite the following text based on this instruction: ${command}. Output ONLY the rewritten text. Text:\n\n${text}`;
 
-    const result = await model.generateContent(prompt);
+    let result;
+    try {
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+      result = await model.generateContent(prompt);
+    } catch (fallbackError) {
+      console.warn("Falling back to gemini-pro...", fallbackError.message);
+      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+      result = await model.generateContent(prompt);
+    }
     const response = await result.response;
     const resultText = response.text();
 
