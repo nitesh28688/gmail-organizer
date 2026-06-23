@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { sendEmail } from "../../../lib/gmail";
+import { sendEmail, unsnoozeMessages } from "../../../lib/gmail";
 
 const prisma = new PrismaClient();
 
@@ -38,8 +38,8 @@ export async function GET(request) {
           await sendEmail(task.userId, accountId, emailData);
         } else if (task.type === "SNOOZE") {
           // Payload contains: { accountId, messageId }
-          // We would add it back to INBOX via Gmail API
-          // (Implementation omitted for brevity, but this is the hook)
+          const { accountId, messageId } = payload;
+          await unsnoozeMessages(task.userId, [{ id: messageId, accountId }]);
         }
 
         // Mark as DONE

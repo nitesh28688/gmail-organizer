@@ -3,13 +3,15 @@ import { authOptions } from "../../../api/auth/[...nextauth]/route";
 import { getGmailClient } from "../../../../lib/gmail";
 import { NextResponse } from "next/server";
 
-const encodeEmail = ({ to, from, subject, body, attachments = [] }) => {
+const encodeEmail = ({ to, cc, bcc, from, subject, body, attachments = [] }) => {
   const boundary = `----=_Part_${Math.random().toString(36).substring(2)}`;
   let str = "";
   if (attachments.length > 0) {
     str += `Content-Type: multipart/mixed; boundary="${boundary}"\n`;
     str += `MIME-Version: 1.0\n`;
     str += `to: ${to}\n`;
+    if (cc) str += `cc: ${cc}\n`;
+    if (bcc) str += `bcc: ${bcc}\n`;
     str += `from: ${from}\n`;
     str += `subject: ${subject}\n\n`;
     
@@ -32,6 +34,8 @@ const encodeEmail = ({ to, from, subject, body, attachments = [] }) => {
     str += `MIME-Version: 1.0\n`;
     str += `Content-Transfer-Encoding: 7bit\n`;
     str += `to: ${to}\n`;
+    if (cc) str += `cc: ${cc}\n`;
+    if (bcc) str += `bcc: ${bcc}\n`;
     str += `from: ${from}\n`;
     str += `subject: ${subject}\n\n`;
     str += body;
@@ -46,10 +50,10 @@ export async function POST(request) {
 
   try {
     const payload = await request.json();
-    const { draftId, to, from, subject, body, attachments, accountId } = payload;
+    const { draftId, to, cc, bcc, from, subject, body, attachments, accountId } = payload;
     
     const gmail = await getGmailClient(session.user.id, accountId);
-    const raw = encodeEmail({ to, from, subject, body, attachments });
+    const raw = encodeEmail({ to, cc, bcc, from, subject, body, attachments });
 
     if (draftId) {
       const res = await gmail.users.drafts.update({

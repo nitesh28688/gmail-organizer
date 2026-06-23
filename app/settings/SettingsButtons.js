@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
 export default function SettingsButtons() {
@@ -12,6 +12,34 @@ export default function SettingsButtons() {
   const [aliasName, setAliasName] = useState("");
   const [aliasEmail, setAliasEmail] = useState("");
   const [aliasStatus, setAliasStatus] = useState("Add Send-As Alias");
+
+  const [signature, setSignature] = useState("");
+  const [signatureStatus, setSignatureStatus] = useState("Save Signature");
+
+  useEffect(() => {
+    fetch("/api/user/signature").then(r => r.json()).then(d => {
+      if (d.signature) setSignature(d.signature);
+    }).catch(console.error);
+  }, []);
+
+  const handleSaveSignature = async (e) => {
+    e.preventDefault();
+    setSignatureStatus("Saving...");
+    try {
+      const res = await fetch("/api/user/signature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ signature })
+      });
+      if (!res.ok) throw new Error("Failed to save signature");
+      setSignatureStatus("Saved! ✅");
+      setTimeout(() => setSignatureStatus("Save Signature"), 3000);
+    } catch (e) {
+      console.error(e);
+      setSignatureStatus("Error saving signature ❌");
+      setTimeout(() => setSignatureStatus("Save Signature"), 3000);
+    }
+  };
 
   const handleAudit = async () => {
     setAuditStatus("Scanning inbox (this may take a minute)...");
@@ -103,6 +131,24 @@ export default function SettingsButtons() {
         <button className="btn-primary" onClick={handleAudit} style={{ background: '#16a766' }}>
           {auditStatus}
         </button>
+      </div>
+
+      <div className="glass-panel" style={{ padding: '32px' }}>
+        <h3 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>3. Email Signature</h3>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>
+          This signature will be appended to the bottom of all emails sent from this application.
+        </p>
+        <form onSubmit={handleSaveSignature} style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '400px' }}>
+          <textarea
+            value={signature}
+            onChange={e => setSignature(e.target.value)}
+            placeholder="e.g. Best regards,&#10;John Doe"
+            style={{ width: '100%', padding: '12px', minHeight: '120px', background: 'var(--bg-surface)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
+          />
+          <button type="submit" className="btn-primary" style={{ background: 'var(--accent)', marginTop: '8px', alignSelf: 'flex-start' }} disabled={signatureStatus === "Saving..."}>
+            {signatureStatus}
+          </button>
+        </form>
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ export async function POST(req) {
   }
 
   try {
-    const { accountId, executeAt, ...body } = await req.json();
+    const { accountId, executeAt, type = "SEND_LATER", ...body } = await req.json();
 
     if (!executeAt) {
       return NextResponse.json({ error: "executeAt is required" }, { status: 400 });
@@ -22,7 +22,7 @@ export async function POST(req) {
 
     const task = await prisma.scheduledTask.create({
       data: {
-        type: "SEND_LATER",
+        type,
         executeAt: new Date(executeAt),
         payload,
         userId: session.user.id

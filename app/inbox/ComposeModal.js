@@ -7,12 +7,18 @@ export default function ComposeModal({
   userEmail,
   initialDraftId = null,
   initialTo = "",
+  initialCc = "",
+  initialBcc = "",
   initialSubject = "",
   initialBody = "",
   initialAttachments = [],
-  initialAccountId = null
+  initialAccountId = null,
+  contacts = [],
+  isInline = false
 }) {
   const [to, setTo] = useState(initialTo);
+  const [cc, setCc] = useState(initialCc);
+  const [bcc, setBcc] = useState(initialBcc);
   const [subject, setSubject] = useState(initialSubject);
   const [body, setBody] = useState(initialBody);
   const [from, setFrom] = useState(userEmail);
@@ -33,12 +39,12 @@ export default function ComposeModal({
     }
     
     // Only auto-save if there is some content
-    if (!to && !subject && !body && attachments.length === 0) return;
+    if (!to && !cc && !bcc && !subject && !body && attachments.length === 0) return;
 
     setSaveStatus("Saving...");
     const timeoutId = setTimeout(async () => {
       try {
-        const payload = { draftId, to, subject, body, from, attachments, accountId: initialAccountId };
+        const payload = { draftId, to, cc, bcc, subject, body, from, attachments, accountId: initialAccountId };
         const res = await fetch("/api/gmail/draft", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -56,7 +62,7 @@ export default function ComposeModal({
     }, 2000);
 
     return () => clearTimeout(timeoutId);
-  }, [to, subject, body, from, attachments]);
+  }, [to, cc, bcc, subject, body, from, attachments]);
 
   useEffect(() => {
     const handleClick = () => setContextMenu(null);
@@ -80,45 +86,35 @@ export default function ComposeModal({
     }
   }, [initialAccountId]);
 
-  const handleSend = async (e) => {
-    e.preventDefault();
-    setSending(true);
+  const handleSend = async (e, scheduledDate = null) => {
+    if (e) e.preventDefault();
+    const payload = {
+      accountId: initialAccountId,
+      to,
+      cc,
+      bcc,
+      from,
+      subject,
+      body,
+      attachments
+    };
 
-    try {
-      const payload = {
-        accountId: initialAccountId,
-        to,
-        from,
-        subject,
-        body,
-        attachments
-      };
-
-      const res = await fetch("/api/gmail/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error);
-
-      if (draftId) {
-        await fetch("/api/gmail/draft", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ draftId, accountId: initialAccountId })
-        });
-      }
-
-      window.dispatchEvent(new CustomEvent("toast", { detail: "Message sent successfully" }));
-      window.dispatchEvent(new Event("refreshCounts"));
-      onClose(true);
-    } catch (error) {
-      console.error("Failed to send", error);
-      alert("Failed to send message: " + error.message);
-    } finally {
-      setSending(false);
+    if (scheduledDate) {
+      onClose({ type: "SCHEDULE", payload, draftId, executeAt: scheduledDate });
+    } else {
+      onClose({ type: "SEND_NOW", payload, draftId });
     }
+  };
+
+  const handleDiscard = async () => {
+    if (draftId) {
+      await fetch("/api/gmail/draft", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draftId, accountId: initialAccountId })
+      });
+    }
+    onClose(false);
   };
 
   const handleFileChange = (e) => {
@@ -146,6 +142,8 @@ export default function ComposeModal({
 
   const textareaRef = useRef(null);
   const [aiMenuOpen, setAiMenuOpen] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleTime, setScheduleTime] = useState("");
 
   const handleAIDraft = async (command) => {
     if (!textareaRef.current) return;
@@ -181,7 +179,14 @@ export default function ComposeModal({
   };
 
   return (
-    <div className="pop-in" style={{
+    <div className="pop-in" style={isInline ? {
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'transparent',
+      padding: '32px'
+    } : {
       position: 'fixed',
       bottom: '24px',
       right: '24px',
@@ -229,12 +234,39 @@ export default function ComposeModal({
           </select>
         </div>
 
+        <datalist id="contacts-list">
+          {contacts.map((contact, idx) => <option key={idx} value={contact} />)}
+        </datalist>
+
         <div style={{ display: 'flex', borderBottom: '1px solid var(--glass-border)', padding: '12px 16px' }}>
           <label style={{ width: '60px', color: 'var(--text-secondary)' }}>To:</label>
           <input 
             type="email" 
+            list="contacts-list"
             value={to}
             onChange={(e) => setTo(e.target.value)}
+            style={{ flex: 1, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', padding: '4px 8px', borderRadius: '4px', outline: 'none' }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--glass-border)', padding: '12px 16px' }}>
+          <label style={{ width: '60px', color: 'var(--text-secondary)' }}>Cc:</label>
+          <input 
+            type="email" 
+            list="contacts-list"
+            value={cc}
+            onChange={(e) => setCc(e.target.value)}
+            style={{ flex: 1, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', padding: '4px 8px', borderRadius: '4px', outline: 'none' }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--glass-border)', padding: '12px 16px' }}>
+          <label style={{ width: '60px', color: 'var(--text-secondary)' }}>Bcc:</label>
+          <input 
+            type="email" 
+            list="contacts-list"
+            value={bcc}
+            onChange={(e) => setBcc(e.target.value)}
             style={{ flex: 1, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', padding: '4px 8px', borderRadius: '4px', outline: 'none' }}
           />
         </div>
@@ -335,14 +367,41 @@ export default function ComposeModal({
               {saveStatus}
             </span>
           </div>
-          <button 
-            type="submit" 
-            disabled={sending || aiLoading || !to}
-            className="btn-primary" 
-            style={{ padding: '8px 24px', opacity: (sending || aiLoading || !to) ? 0.7 : 1 }}
-          >
-            {sending ? 'Sending...' : 'Send'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button 
+              type="button" 
+              onClick={handleDiscard}
+              style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}
+            >
+              🗑️ Discard
+            </button>
+            <div style={{ position: 'relative' }}>
+              <button 
+                type="button" 
+                onClick={() => setShowSchedule(!showSchedule)}
+                style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', padding: '8px 12px', borderRadius: '8px 0 0 8px', cursor: 'pointer' }}
+              >
+                🕒
+              </button>
+              {showSchedule && (
+                <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '8px', padding: '16px', background: 'var(--bg-surface)', border: '1px solid var(--glass-border)', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', zIndex: 1002, display: 'flex', flexDirection: 'column', gap: '8px', width: '250px' }}>
+                  <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Schedule to send at:</label>
+                  <input type="datetime-local" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} style={{ padding: '8px', borderRadius: '4px', border: '1px solid var(--glass-border)', background: 'var(--glass-bg)', color: 'var(--text-primary)' }} />
+                  <button type="button" className="btn-primary" onClick={() => handleSend(null, scheduleTime)} disabled={!scheduleTime || !to}>
+                    Schedule Send
+                  </button>
+                </div>
+              )}
+            </div>
+            <button 
+              type="submit" 
+              disabled={sending || aiLoading || !to}
+              className="btn-primary" 
+              style={{ padding: '8px 24px', borderRadius: '0 8px 8px 0', opacity: (sending || aiLoading || !to) ? 0.7 : 1 }}
+            >
+              {sending ? 'Sending...' : 'Send'}
+            </button>
+          </div>
         </div>
       </form>
     </div>
