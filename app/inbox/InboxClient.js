@@ -24,7 +24,7 @@ export default function InboxPage() {
   const [userLabels, setUserLabels] = useState([]);
   const [newLabelName, setNewLabelName] = useState("");
   const [creatingLabel, setCreatingLabel] = useState(false);
-  const [contacts, setContacts] = useState([]);
+  const [apiContacts, setApiContacts] = useState([]);
   
   // Compose State
   const [composeOpen, setComposeOpen] = useState(false);
@@ -111,7 +111,7 @@ export default function InboxPage() {
             try {
               const res = await fetch("/api/gmail/contacts");
               const data = await res.json();
-              if (data.contacts) setContacts(data.contacts);
+              if (data.contacts) setApiContacts(data.contacts);
             } catch (e) {
               console.error("Failed to fetch contacts", e);
             }
@@ -293,7 +293,7 @@ export default function InboxPage() {
     
     // Also fetch contacts
     fetch("/api/gmail/contacts").then(r => r.json()).then(d => {
-      if (d.contacts) setContacts(d.contacts);
+      if (d.contacts) setApiContacts(d.contacts);
     }).catch(e => console.error(e));
   }, [space, activeAccountId]);
 
@@ -481,10 +481,11 @@ export default function InboxPage() {
   const allSelected = emails.length > 0 && selectedEmails.length === emails.length;
 
   // Extract contacts from loaded emails for autocomplete
-  const contacts = Array.from(new Set(emails.map(e => e.from).concat(emails.map(e => e.to)))).filter(Boolean).map(c => {
+  const localContacts = Array.from(new Set(emails.map(e => e.from).concat(emails.map(e => e.to)))).filter(Boolean).map(c => {
     const match = c.match(/(.*?) <(.*?)>/);
     return match ? match[2] : c;
   });
+  const contacts = Array.from(new Set([...apiContacts, ...localContacts]));
 
   return (
     <div style={{ display: 'flex', height: '100%', width: '100%' }}>
