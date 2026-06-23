@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export default function AIAssistant({ emailContent, onQuickReply }) {
+export default function AIAssistant({ emailContent, onAction }) {
   const [summary, setSummary] = useState(null);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [replies, setReplies] = useState(null);
@@ -111,7 +111,7 @@ export default function AIAssistant({ emailContent, onQuickReply }) {
           {replies.map((reply, i) => (
             <button
               key={i}
-              onClick={() => onQuickReply(reply)}
+              onClick={() => onAction('reply', reply)}
               style={{
                 background: 'var(--accent)',
                 border: 'none',

@@ -639,7 +639,17 @@ export default function InboxPage() {
             ))}
           </div>
         ) : emails.length === 0 ? (
-          <div style={{ padding: '24px', color: 'var(--text-secondary)' }}>No messages found.</div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', color: 'var(--text-secondary)', gap: '12px' }}>
+            <span style={{ fontSize: '3rem', opacity: 0.2 }}>
+              {space === 'Trash' ? '🗑️' : space === 'Sent' ? '📤' : space === 'Drafts' ? '📝' : space === 'Starred' ? '⭐' : '📭'}
+            </span>
+            <p style={{ margin: 0, fontWeight: 600, color: 'var(--text-primary)', fontSize: '1rem' }}>
+              {searchQuery || filterFrom || filterTo || filterSubject ? 'No results found' : `${space} is empty`}
+            </p>
+            <p style={{ margin: 0, fontSize: '0.85rem', textAlign: 'center' }}>
+              {searchQuery || filterFrom || filterTo || filterSubject ? 'Try adjusting your search or filters.' : 'Nothing here yet.'}
+            </p>
+          </div>
         ) : (
           emails.map(email => {
             const displayParticipant = isSentSpace || isDraftSpace ? `To: ${email.to}` : email.from;
@@ -976,8 +986,7 @@ export default function InboxPage() {
         </div>
       )}
 
-      <CmdKPalette 
-        accounts={[]} 
+      <CmdKPalette
         activeAccountId={activeAccountId}
         onSelectAccount={(id) => {
           window.location.href = `/inbox?account=${id}`;
