@@ -50,7 +50,6 @@ export default function Home() {
               </div>
               Sign in with Google
             </button>
-          </div>
         )}
       </main>
     </div>
