@@ -23,30 +23,40 @@ export async function POST(request) {
       });
     }
 
-    let result;
-    try {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
-      const prompt = `Generate 3 short, realistic, and distinct quick reply options for this email. Return ONLY a JSON array of 3 strings (e.g. ["Yes, sounds good.", "No, thanks.", "Let's discuss next week."]). Email content:\n\n${emailContent.substring(0, 3000)}`;
-      result = await model.generateContent(prompt);
-    } catch (fallbackError) {
-      console.warn("Falling back to gemini-pro...", fallbackError.message);
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-      const prompt = `Generate 3 short, realistic, and distinct quick reply options for this email. Return ONLY a JSON array of 3 strings (e.g. ["Yes, sounds good.", "No, thanks.", "Let's discuss next week."]). Email content:\n\n${emailContent.substring(0, 3000)}`;
-      result = await model.generateContent(prompt);
+    const apiKey = process.env.GEMINI_API_KEY;
+    const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    const modelsData = await modelsRes.json();
+    
+    if (!modelsData.models) {
+      throw new Error(`Failed to fetch models: ${JSON.stringify(modelsData)}`);
     }
+
+    const available = modelsData.models
+      .filter(m => m.supportedGenerationMethods.includes("generateContent"))
+      .map(m => m.name.replace('models/', ''));
+
+    let bestModel = available.find(n => n === "gemini-1.5-flash") || 
+                    available.find(n => n === "gemini-1.5-pro") || 
+                    available.find(n => n.includes("flash")) || 
+                    available.find(n => n.includes("pro")) || 
+                    available[0];
+
+    if (!bestModel) throw new Error(`No compatible models found. Available: ${available.join(", ")}`);
+
+    const model = genAI.getGenerativeModel({ model: bestModel });
+    const prompt = `Generate 3 short, realistic, and distinct quick reply options for this email. Return ONLY a JSON array of 3 strings (e.g. ["Yes, sounds good.", "No, thanks.", "Let's discuss next week."]). Email content:\n\n${emailContent.substring(0, 3000)}`;
+    const result = await model.generateContent(prompt);
+    
     const response = await result.response;
     const text = response.text().trim();
     
-    // Parse the JSON array from the response
-    let replies = [];
+    let replies;
     try {
-      const jsonStart = text.indexOf('[');
-      const jsonEnd = text.lastIndexOf(']') + 1;
-      const jsonStr = text.substring(jsonStart, jsonEnd);
-      replies = JSON.parse(jsonStr);
+      replies = JSON.parse(text);
     } catch(e) {
-      console.error("Failed to parse AI JSON replies", text);
-      replies = ["Sounds good.", "Thanks!", "Will review."];
+      const match = text.match(/\[.*\]/s);
+      if (match) replies = JSON.parse(match[0]);
+      else replies = text.split('\n').filter(l => l.trim().length > 0).slice(0,3);
     }
 
     return NextResponse.json({ replies });

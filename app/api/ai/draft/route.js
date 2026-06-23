@@ -28,15 +28,28 @@ export async function POST(request) {
     else if (command === "Make Concise") prompt = `Rewrite the following text to be as concise and brief as possible without losing the core meaning. Output ONLY the rewritten text. Text:\n\n${text}`;
     else prompt = `Rewrite the following text based on this instruction: ${command}. Output ONLY the rewritten text. Text:\n\n${text}`;
 
-    let result;
-    try {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
-      result = await model.generateContent(prompt);
-    } catch (fallbackError) {
-      console.warn("Falling back to gemini-pro...", fallbackError.message);
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-      result = await model.generateContent(prompt);
+    const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    const modelsData = await modelsRes.json();
+    
+    if (!modelsData.models) {
+      throw new Error(`Failed to fetch models: ${JSON.stringify(modelsData)}`);
     }
+
+    const available = modelsData.models
+      .filter(m => m.supportedGenerationMethods.includes("generateContent"))
+      .map(m => m.name.replace('models/', ''));
+
+    let bestModel = available.find(n => n === "gemini-1.5-flash") || 
+                    available.find(n => n === "gemini-1.5-pro") || 
+                    available.find(n => n.includes("flash")) || 
+                    available.find(n => n.includes("pro")) || 
+                    available[0];
+
+    if (!bestModel) throw new Error(`No compatible models found. Available: ${available.join(", ")}`);
+
+    const model = genAI.getGenerativeModel({ model: bestModel });
+    const result = await model.generateContent(prompt);
+    
     const response = await result.response;
     const resultText = response.text();
 
