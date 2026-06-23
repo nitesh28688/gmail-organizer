@@ -70,24 +70,28 @@ export default function LoginPortal() {
           />
         </div>
         
-        <h1 style={{ 
-          fontSize: '2.2rem', 
-          fontWeight: '800', 
-          letterSpacing: '-0.03em', 
-          marginBottom: '0.75rem', 
-          color: '#fff' 
+        <h1 style={{
+          fontSize: '2.2rem',
+          fontWeight: '800',
+          letterSpacing: '-0.03em',
+          marginBottom: '0.5rem',
+          color: '#fff'
         }}>
-          Linear Ventures
+          Linear Mail
         </h1>
-        
-        <p style={{ 
-          color: '#9ca3af', 
-          fontSize: '1.05rem', 
-          lineHeight: '1.5', 
+
+        <p style={{ color: '#6b7280', fontSize: '0.8rem', marginBottom: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          by Linear Ventures
+        </p>
+
+        <p style={{
+          color: '#9ca3af',
+          fontSize: '1.05rem',
+          lineHeight: '1.5',
           marginBottom: '2.5rem',
           maxWidth: '300px'
         }}>
-          The bespoke workspace designed to segregate noise and accelerate workflow.
+          A smarter Gmail client. Organise, summarise, and track your email.
         </p>
 
         {loading ? (
