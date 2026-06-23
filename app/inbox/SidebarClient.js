@@ -204,7 +204,7 @@ export default function SidebarClient({ userEmail }) {
               onChange={handleAccountChange}
               style={{
                 width: '100%',
-                padding: '10px 14px',
+                padding: '10px 40px 10px 14px',
                 borderRadius: '12px',
                 background: 'var(--glass-bg)',
                 border: '1px solid var(--glass-border)',
@@ -214,6 +214,9 @@ export default function SidebarClient({ userEmail }) {
                 fontWeight: '600',
                 appearance: 'none',
                 cursor: 'pointer',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                 transition: 'all 0.2s ease',
               }}
