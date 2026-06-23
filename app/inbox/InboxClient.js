@@ -8,7 +8,7 @@ import CmdKPalette from "./CmdKPalette";
 
 export default function InboxPage() {
   const searchParams = useSearchParams();
-  const space = searchParams.get("space") || "All Mail";
+  const space = searchParams.get("space") || "Inbox";
   const activeAccountId = searchParams.get("account") || "";
   
   const [emails, setEmails] = useState([]);
@@ -81,6 +81,13 @@ export default function InboxPage() {
         showToast("Error scheduling email");
       }
     } else if (result.type === "SEND_NOW") {
+      if (result.draftId) {
+        fetch("/api/gmail/draft", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draftId: result.draftId, accountId: result.payload.accountId }) }).catch(e => console.error(e));
+        if (space === "Drafts") {
+          setTimeout(() => fetchInbox(), 500);
+        }
+      }
+
       let seconds = 20;
       setUndoToast(`Sending in ${seconds}s...`);
       
@@ -102,21 +109,6 @@ export default function InboxPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(result.payload)
           });
-          if (result.draftId) {
-            await fetch("/api/gmail/draft", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draftId: result.draftId, accountId: result.payload.accountId }) });
-          }
-          const loadData = async () => {
-            await fetchInbox();
-            await fetchLabels();
-            try {
-              const res = await fetch("/api/gmail/contacts");
-              const data = await res.json();
-              if (data.contacts) setApiContacts(data.contacts);
-            } catch (e) {
-              console.error("Failed to fetch contacts", e);
-            }
-          };
-          loadData();
           showToast("Email Sent Successfully! 🚀");
           fetchInbox();
         } catch (e) {
@@ -248,12 +240,13 @@ export default function InboxPage() {
     setSelectedEmails([]);
     try {
       let baseQuery = "";
-      if (space === "All Mail") baseQuery = "-in:trash";
+      if (space === "Inbox") baseQuery = "in:inbox";
+      else if (space === "All Mail") baseQuery = "-in:trash";
       else if (space === "Drafts") baseQuery = "in:draft";
       else if (space === "Sent") baseQuery = "in:sent";
       else if (space === "Trash") baseQuery = "in:trash";
       else if (space === "Linear Ventures") baseQuery = "(to:linearventures.in OR from:linearventures.in) -in:trash -in:draft";
-      else if (space === "Nanoliss") baseQuery = "(to:nanoliss.in OR from:nanoliss.in) -in:trash -in:draft";
+      else if (space === "Nanoliss") baseQuery = "(to:nanoliss.in OR from:nanoliss.in OR to:nanoliss.com OR from:nanoliss.com) -in:trash -in:draft";
       else if (space === "Services") baseQuery = "(receipt OR invoice OR order OR service) -in:trash -in:draft";
       else if (space === "Finance") baseQuery = "(bank OR statement OR payment OR finance) -in:trash -in:draft";
       else baseQuery = `(to:${space} OR from:${space}) -in:trash -in:draft`;
@@ -310,6 +303,7 @@ export default function InboxPage() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+      if (e.ctrlKey || e.metaKey) return;
 
       if (e.key === 'j' && !activeEmail) {
         // Move focus down (simple simulation for now by selecting first or next)
@@ -511,6 +505,9 @@ export default function InboxPage() {
                 style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '1.5rem', padding: '0 8px' }}>
                 ☰
               </button>
+              <button onClick={fetchInbox} style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} title="Refresh Inbox">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-9.21l5.67-5.67"/></svg>
+              </button>
               <input 
                 type="text" 
                 placeholder={`Search in ${space}...`}
@@ -679,7 +676,7 @@ export default function InboxPage() {
                 </div>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: email.isUnread ? '700' : '500', color: email.isUnread ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, overflow: 'hidden' }}>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -693,17 +690,22 @@ export default function InboxPage() {
                             body: JSON.stringify({ action, messages: [{ id: email.id, accountId: email.accountId }] })
                           }).catch(() => showToast("Error starring email"));
                         }}
-                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, fontSize: '1.2rem', color: email.isStarred ? '#fbbf24' : 'var(--text-secondary)', opacity: email.isStarred ? 1 : 0.5 }}
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, fontSize: '1.2rem', color: email.isStarred ? '#fbbf24' : 'var(--text-secondary)', opacity: email.isStarred ? 1 : 0.5, flexShrink: 0 }}
                       >
                         {email.isStarred ? '★' : '☆'}
                       </button>
-                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
+                      <span style={{ fontWeight: isActive ? '700' : (email.isUnread ? '700' : '600'), color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {displayParticipant.split('<')[0].trim() || "(No Recipient)"}
                       </span>
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                      {new Date(email.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                    </span>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                      {isSentSpace && email.isOpened && <span title={`Read at ${new Date(email.openedAt).toLocaleString()}`} style={{ color: '#0ea5e9', fontSize: '0.9rem', fontWeight: 700 }}>✓✓</span>}
+                      {isSentSpace && email.isTracked && !email.isOpened && <span title="Sent & Tracked" style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>✓</span>}
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '400' }}>
+                        {new Date(email.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
                   </div>
                   <div style={{ fontWeight: email.isUnread && !isSelected ? '600' : '400', color: email.isUnread && !isSelected ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {email.subject}
@@ -818,12 +820,14 @@ export default function InboxPage() {
               {/* Thread Messages */}
               {activeEmail.threadMessages && activeEmail.threadMessages.map((msg, index) => (
                 <div key={msg.id} style={{ marginBottom: '24px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'hidden' }}>
-                  <div style={{ padding: '16px', borderBottom: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--glass-border)', background: 'var(--glass-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{msg.from}</div>
                       <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>To: {msg.to}</div>
                     </div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {msg.isOpened && <span title={`Read at ${new Date(msg.openedAt).toLocaleString()}`} style={{ color: '#0ea5e9', fontSize: '1rem', fontWeight: 700 }}>✓✓</span>}
+                      {msg.isTracked && !msg.isOpened && <span title="Sent & Tracked" style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>✓</span>}
                       {new Date(msg.date).toLocaleString()}
                     </div>
                   </div>
