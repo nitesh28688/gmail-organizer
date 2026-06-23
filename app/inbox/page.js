@@ -400,11 +400,11 @@ export default function InboxPage() {
               }}
             />
           ) : (
-            <div className="pop-in" style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto', position: 'relative' }}>
+            <div className="pop-in" style={{ padding: '32px 48px', width: '100%', margin: '0', position: 'relative', display: 'flex', flexDirection: 'column', height: '100%' }}>
               <button 
                 className="mobile-only" 
                 onClick={() => setActiveEmail(null)} 
-                style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '8px 16px', borderRadius: '8px', color: 'var(--text-primary)', cursor: 'pointer', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '8px 16px', borderRadius: '8px', color: 'var(--text-primary)', cursor: 'pointer', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px', alignSelf: 'flex-start' }}>
                 <span>←</span> Back to Inbox
               </button>
               <h2 style={{ fontSize: '1.8rem', fontWeight: '700', marginBottom: '8px' }}>{activeEmail.subject}</h2>
@@ -427,7 +427,7 @@ export default function InboxPage() {
                       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
                       line-height: 1.6; 
                       color: #333; 
-                      padding: 20px;
+                      padding: 24px;
                       margin: 0;
                     }
                     a { color: #4a86e8; text-decoration: none; }
@@ -442,11 +442,12 @@ export default function InboxPage() {
                 `}
                 style={{ 
                   width: '100%', 
-                  height: '600px', 
+                  flex: 1,
+                  minHeight: '400px',
                   border: 'none', 
                   background: 'var(--bg-surface)', 
                   borderRadius: '12px',
-                  marginTop: '16px',
+                  marginTop: '0px',
                   boxShadow: '0 8px 32px rgba(0,0,0,0.15)'
                 }}
               />
