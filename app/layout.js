@@ -2,14 +2,18 @@ import "./globals.css";
 import AuthProvider from "../components/AuthProvider";
 
 export const metadata = {
-  title: "Gmail Organizer",
+  title: "Linear Ventures Mail",
   description: "A premium, custom email client and organizer.",
   manifest: "/manifest.json",
   themeColor: "#030712",
+  icons: {
+    icon: "/logo-lv.png",
+    apple: "/logo-lv.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Organizer",
+    title: "Linear Ventures Mail",
   },
 };
 

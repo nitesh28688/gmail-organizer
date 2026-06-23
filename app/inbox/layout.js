@@ -19,7 +19,7 @@ export default async function InboxLayout({ children }) {
   }
 
   return (
-    <div className="h-screen flex" style={{ display: 'flex', width: '100vw' }}>
+    <div className="h-screen flex" style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
       <SidebarClient spaces={spaces} userEmail={session.user.email} />
 
       {/* Main Content Area */}
