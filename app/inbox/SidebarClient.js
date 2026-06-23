@@ -288,7 +288,7 @@ export default function SidebarClient({ userEmail }) {
         >
           🚪 Sign Out
         </button>
-        <Link href="/settings" style={{
+        <Link href={`/settings?account=${activeAccountId}`} style={{
           display: 'flex',
           alignItems: 'center',
           padding: '10px 12px',

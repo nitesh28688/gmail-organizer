@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function SettingsButtons() {
+  const searchParams = useSearchParams();
+  const activeAccountId = searchParams.get("account") || "";
+
   const [auditStatus, setAuditStatus] = useState("Run Inbox Audit");
   
   const [aliasName, setAliasName] = useState("");
@@ -12,7 +16,11 @@ export default function SettingsButtons() {
   const handleAudit = async () => {
     setAuditStatus("Scanning inbox (this may take a minute)...");
     try {
-      const res = await fetch("/api/gmail/audit", { method: "POST" });
+      const res = await fetch("/api/gmail/audit", { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId: activeAccountId })
+      });
       if (!res.ok) throw new Error("Audit failed");
       setAuditStatus("Audit complete! ✅");
       setTimeout(() => setAuditStatus("Run Inbox Audit"), 5000);

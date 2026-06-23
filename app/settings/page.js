@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Suspense } from "react";
 import SettingsButtons from "./SettingsButtons";
 
 export default async function SettingsPage() {
@@ -23,7 +24,9 @@ export default async function SettingsPage() {
       {/* Main Content */}
       <main style={{ flex: 1, padding: '48px', overflowY: 'auto' }}>
         <h1 style={{ fontSize: '2.5rem', marginBottom: '32px' }}>Rules Engine & Audit</h1>
-        <SettingsButtons />
+        <Suspense fallback={<div>Loading settings...</div>}>
+          <SettingsButtons />
+        </Suspense>
       </main>
     </div>
   );
