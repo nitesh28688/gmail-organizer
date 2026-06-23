@@ -20,3 +20,22 @@ export async function POST(request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function GET(request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { searchParams } = new URL(request.url);
+  const accountId = searchParams.get("accountId");
+
+  if (!accountId) return NextResponse.json({ error: "accountId is required" }, { status: 400 });
+
+  try {
+    const { getSendAsAliases } = require("../../../../lib/gmail");
+    const aliases = await getSendAsAliases(session.user.id, accountId);
+    return NextResponse.json({ aliases });
+  } catch (error) {
+    console.error("Get Aliases Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

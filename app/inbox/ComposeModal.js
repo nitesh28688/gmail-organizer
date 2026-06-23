@@ -65,28 +65,49 @@ export default function ComposeModal({
     return () => document.removeEventListener("click", handleClick);
   }, []);
 
+  const [aliases, setAliases] = useState([]);
+
+  useEffect(() => {
+    // If we have an active account, fetch aliases
+    if (activeAccountId) {
+      fetch(`/api/gmail/alias?accountId=${activeAccountId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.aliases) {
+            setAliases(data.aliases);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [activeAccountId]);
+
   const handleSend = async (e) => {
     e.preventDefault();
     setSending(true);
+
     try {
+      const payload = {
+        accountId: activeAccountId,
+        to,
+        from,
+        subject,
+        body,
+        attachments
+      };
+
       const res = await fetch("/api/gmail/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to, subject, body, from, attachments, accountId: initialAccountId }),
+        body: JSON.stringify(payload)
       });
-      if (!res.ok) throw new Error("Failed to send");
-      
-      // If we had a draft, delete it after sending
-      if (draftId) {
-        await fetch("/api/gmail/draft", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ draftId, accountId: initialAccountId })
-        });
-      }
-      onClose(true); // pass true to indicate sent
-    } catch (e) {
-      alert("Error sending email: " + e.message);
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      window.dispatchEvent(new CustomEvent("toast", { detail: "Message sent successfully" }));
+      onClose(true);
+    } catch (error) {
+      console.error("Failed to send", error);
+      alert("Failed to send message: " + error.message);
     } finally {
       setSending(false);
     }
@@ -116,15 +137,15 @@ export default function ComposeModal({
   };
 
   const handleContextMenu = (e) => {
-    e.preventDefault();
     const textarea = e.target;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selectedText = body.substring(start, end);
     if (selectedText.trim().length > 0) {
+      e.preventDefault(); // Only block right-click if text is selected for AI
       setContextMenu({ x: e.clientX, y: e.clientY, start, end, selectedText });
     } else {
-      setContextMenu(null);
+      setContextMenu(null); // Default context menu will show
     }
   };
 
@@ -190,8 +211,11 @@ export default function ComposeModal({
             style={{ flex: 1, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', padding: '4px 8px', borderRadius: '4px', outline: 'none' }}
           >
             <option value={userEmail}>{userEmail}</option>
-            <option value={`"Linear Ventures" <${userEmail}>`}>Linear Ventures</option>
-            <option value={`"Nanoliss" <${userEmail}>`}>Nanoliss</option>
+            {aliases.map(a => (
+              <option key={a.sendAsEmail} value={`"${a.displayName}" <${a.sendAsEmail}>`}>
+                {a.displayName}
+              </option>
+            ))}
           </select>
         </div>
 
