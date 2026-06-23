@@ -16,6 +16,12 @@ export default function InboxPage() {
   const [activeEmail, setActiveEmail] = useState(null);
   const [loadingBody, setLoadingBody] = useState(false);
   
+  // Compose State
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeTo, setComposeTo] = useState("");
+  const [composeSubject, setComposeSubject] = useState("");
+  const [composeBody, setComposeBody] = useState("");
+  
   // Search & Filters State
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -147,10 +153,12 @@ export default function InboxPage() {
       } else if (e.key === 'r' && activeEmail) {
         setComposeTo(activeEmail.from);
         setComposeSubject(`Re: ${activeEmail.subject}`);
+        setComposeBody("");
         setComposeOpen(true);
       } else if (e.key === 'c') {
         setComposeTo("");
         setComposeSubject("");
+        setComposeBody("");
         setComposeOpen(true);
       } else if (e.key === 'Escape' && activeEmail) {
         setActiveEmail(null);
@@ -164,6 +172,7 @@ export default function InboxPage() {
     const openCompose = () => {
       setComposeTo("");
       setComposeSubject("");
+      setComposeBody("");
       setComposeOpen(true);
     };
     window.addEventListener("openCompose", openCompose);
@@ -605,6 +614,7 @@ export default function InboxPage() {
                 onQuickReply={(text) => {
                   setComposeTo(activeEmail.from);
                   setComposeSubject(`Re: ${activeEmail.subject}`);
+                  setComposeBody(text);
                   setComposeOpen(true);
                 }} 
               />
@@ -644,8 +654,7 @@ export default function InboxPage() {
                   `}
                   style={{ 
                     width: '100%', 
-                    flex: 1,
-                    minHeight: '500px',
+                    flex: '1 0 500px',
                     border: 'none', 
                     background: '#ffffff',
                   }}
@@ -724,6 +733,24 @@ export default function InboxPage() {
           window.location.href = `/inbox?account=${id}`;
         }}
       />
+
+      {/* Global Reply / Compose Modal for Inbox Client */}
+      {composeOpen && (
+        <ComposeModal 
+          userEmail={activeEmail?.to || "me"}
+          initialAccountId={activeAccountId}
+          initialTo={composeTo}
+          initialSubject={composeSubject}
+          initialBody={composeBody}
+          onClose={(sent) => {
+            setComposeOpen(false);
+            if (sent) {
+              showToast("Email Sent Successfully! 🚀");
+              setTimeout(() => fetchInbox(), 1000);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
