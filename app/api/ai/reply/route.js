@@ -45,6 +45,6 @@ export async function POST(request) {
     return NextResponse.json({ replies });
   } catch (error) {
     console.error("AI Reply error:", error);
-    return NextResponse.json({ error: "Failed to generate replies" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to generate replies" }, { status: 500 });
   }
 }

@@ -22,7 +22,6 @@ export default function ComposeModal({
   const [draftId, setDraftId] = useState(initialDraftId);
   const [saveStatus, setSaveStatus] = useState(""); // "Saving...", "Saved"
   
-  const [contextMenu, setContextMenu] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
 
   // Auto-save logic (debounced)
@@ -136,23 +135,22 @@ export default function ComposeModal({
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleContextMenu = (e) => {
-    const textarea = e.target;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = body.substring(start, end);
-    if (selectedText.trim().length > 0) {
-      e.preventDefault(); // Only block right-click if text is selected for AI
-      setContextMenu({ x: e.clientX, y: e.clientY, start, end, selectedText });
-    } else {
-      setContextMenu(null); // Default context menu will show
-    }
-  };
+  const textareaRef = useRef(null);
+  const [aiMenuOpen, setAiMenuOpen] = useState(false);
 
   const handleAIDraft = async (command) => {
-    if (!contextMenu) return;
-    const { start, end, selectedText } = contextMenu;
-    setContextMenu(null);
+    if (!textareaRef.current) return;
+    const start = textareaRef.current.selectionStart;
+    const end = textareaRef.current.selectionEnd;
+    const selectedText = body.substring(start, end);
+    
+    if (selectedText.trim().length === 0) {
+      alert("Please highlight some text in the email body first to use AI editing!");
+      setAiMenuOpen(false);
+      return;
+    }
+
+    setAiMenuOpen(false);
     setAiLoading(true);
 
     try {
@@ -211,11 +209,14 @@ export default function ComposeModal({
             style={{ flex: 1, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', padding: '4px 8px', borderRadius: '4px', outline: 'none' }}
           >
             <option value={userEmail}>{userEmail}</option>
-            {aliases.map(a => (
-              <option key={a.sendAsEmail} value={`"${a.displayName}" <${a.sendAsEmail}>`}>
-                {a.displayName}
-              </option>
-            ))}
+            {aliases.map(a => {
+              const name = a.displayName ? a.displayName : "Alias";
+              return (
+                <option key={a.sendAsEmail} value={`"${name}" <${a.sendAsEmail}>`}>
+                  {a.displayName ? `${a.displayName} (${a.sendAsEmail})` : a.sendAsEmail}
+                </option>
+              );
+            })}
           </select>
         </div>
 
@@ -241,9 +242,9 @@ export default function ComposeModal({
 
         <div style={{ position: 'relative' }}>
           <textarea 
+            ref={textareaRef}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            onContextMenu={handleContextMenu}
             style={{ 
               width: '100%',
               height: '250px', 
@@ -255,7 +256,7 @@ export default function ComposeModal({
               resize: 'none',
               fontFamily: 'inherit'
             }}
-            placeholder="Type your message here. Right-click selected text for AI drafting features!"
+            placeholder="Type your message here. Highlight text and click 'AI Draft' to edit!"
           />
           {aiLoading && (
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold' }}>
@@ -280,8 +281,46 @@ export default function ComposeModal({
             <div>
               <input type="file" id="file-upload" multiple onChange={handleFileChange} style={{ display: 'none' }} />
               <label htmlFor="file-upload" style={{ cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ fontSize: '1.2rem' }}>📎</span> Add attachment
+                <span style={{ fontSize: '1.2rem' }}>📎</span> Attach
               </label>
+            </div>
+            <div style={{ position: 'relative' }}>
+              <button type="button" onClick={() => setAiMenuOpen(!aiMenuOpen)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontSize: '1.2rem' }}>✨</span> AI Draft
+              </button>
+              {aiMenuOpen && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: 0,
+                  marginBottom: '8px',
+                  background: 'var(--bg-surface)',
+                  border: '1px solid var(--glass-border)',
+                  borderRadius: '8px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                  padding: '8px 0',
+                  zIndex: 1001,
+                  minWidth: '200px'
+                }}>
+                  <div style={{ padding: '4px 16px', fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '4px' }}>✨ AI Assistant</div>
+                  {[
+                    "Formalize",
+                    "Fix Spelling & Grammar",
+                    "Make Professional",
+                    "Make Concise"
+                  ].map(cmd => (
+                    <div 
+                      key={cmd}
+                      onClick={() => handleAIDraft(cmd)}
+                      style={{ padding: '8px 16px', cursor: 'pointer', fontSize: '0.9rem', transition: 'background 0.2s', color: 'var(--text-primary)' }}
+                      onMouseOver={(e) => e.currentTarget.style.background = 'var(--glass-border)'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      {cmd}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', transition: 'opacity 0.3s', opacity: saveStatus ? 1 : 0 }}>
               {saveStatus}
@@ -297,39 +336,6 @@ export default function ComposeModal({
           </button>
         </div>
       </form>
-
-      {contextMenu && (
-        <div style={{
-          position: 'fixed',
-          top: contextMenu.y,
-          left: contextMenu.x,
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--glass-border)',
-          borderRadius: '8px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-          padding: '8px 0',
-          zIndex: 1001,
-          minWidth: '200px'
-        }}>
-          <div style={{ padding: '4px 16px', fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '4px' }}>✨ AI Draft Assistant</div>
-          {[
-            "Formalize",
-            "Fix Spelling & Grammar",
-            "Make Professional",
-            "Make Concise"
-          ].map(cmd => (
-            <div 
-              key={cmd}
-              onClick={() => handleAIDraft(cmd)}
-              style={{ padding: '8px 16px', cursor: 'pointer', fontSize: '0.9rem', transition: 'background 0.2s' }}
-              onMouseOver={(e) => e.currentTarget.style.background = 'var(--glass-border)'}
-              onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              {cmd}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
