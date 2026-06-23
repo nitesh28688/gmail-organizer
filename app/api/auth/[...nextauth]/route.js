@@ -20,6 +20,10 @@ export const authOptions = {
       }
     }),
   ],
+  pages: {
+    signIn: '/',
+    error: '/auth/error', // Custom error page
+  },
   callbacks: {
     async session({ session, user }) {
       if (session.user) {
