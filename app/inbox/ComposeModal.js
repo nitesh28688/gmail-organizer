@@ -69,8 +69,8 @@ export default function ComposeModal({
 
   useEffect(() => {
     // If we have an active account, fetch aliases
-    if (activeAccountId) {
-      fetch(`/api/gmail/alias?accountId=${activeAccountId}`)
+    if (initialAccountId) {
+      fetch(`/api/gmail/alias?accountId=${initialAccountId}`)
         .then(res => res.json())
         .then(data => {
           if (data.aliases) {
@@ -79,7 +79,7 @@ export default function ComposeModal({
         })
         .catch(console.error);
     }
-  }, [activeAccountId]);
+  }, [initialAccountId]);
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -87,7 +87,7 @@ export default function ComposeModal({
 
     try {
       const payload = {
-        accountId: activeAccountId,
+        accountId: initialAccountId,
         to,
         from,
         subject,
