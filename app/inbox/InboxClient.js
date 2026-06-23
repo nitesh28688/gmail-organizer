@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import ComposeModal from "./ComposeModal";
 import AIAssistant from "./AIAssistant";
 import CmdKPalette from "./CmdKPalette";
+import OnboardingModal from "./OnboardingModal";
 
 export default function InboxPage() {
   const searchParams = useSearchParams();
@@ -1124,6 +1125,7 @@ export default function InboxPage() {
         </div>
       )}
 
+      <OnboardingModal />
       <CmdKPalette
         activeAccountId={activeAccountId}
         onSelectAccount={(id) => {
