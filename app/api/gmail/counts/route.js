@@ -26,8 +26,8 @@ export async function POST(request) {
         });
         
         if (!res.data.messages) return 0;
-        if (res.data.nextPageToken) return "99+";
-        
+        if (res.data.nextPageToken) return res.data.resultSizeEstimate || res.data.messages.length;
+
         return res.data.messages.length;
       } catch (e) {
         console.error("Error fetching count:", e.message);
