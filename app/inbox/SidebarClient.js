@@ -198,25 +198,37 @@ export default function SidebarClient({ userEmail }) {
         </div>
 
         {accounts.length > 0 && (
-          <div style={{ padding: '0 12px' }}>
+          <div style={{ padding: '0 12px', position: 'relative' }}>
             <select
               value={activeAccountId}
               onChange={handleAccountChange}
               style={{
                 width: '100%',
-                padding: '8px',
-                borderRadius: '8px',
+                padding: '10px 14px',
+                borderRadius: '12px',
                 background: 'var(--glass-bg)',
                 border: '1px solid var(--glass-border)',
                 color: 'var(--text-primary)',
                 outline: 'none',
-                fontSize: '0.9rem'
+                fontSize: '0.95rem',
+                fontWeight: '600',
+                appearance: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                transition: 'all 0.2s ease',
               }}
+              onMouseOver={(e) => { e.target.style.borderColor = 'var(--text-primary)'; e.target.style.background = 'rgba(255, 255, 255, 0.08)' }}
+              onMouseOut={(e) => { e.target.style.borderColor = 'var(--glass-border)'; e.target.style.background = 'var(--glass-bg)' }}
             >
               {accounts.map(acc => (
-                <option key={acc.id} value={acc.id}>{acc.email}</option>
+                <option key={acc.id} value={acc.id} style={{ background: 'var(--bg-color)', color: 'var(--text-primary)' }}>{acc.email}</option>
               ))}
             </select>
+            <div style={{ position: 'absolute', right: '24px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', opacity: 0.7 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
           </div>
         )}
 
