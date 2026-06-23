@@ -28,12 +28,26 @@ export default function SidebarClient({ userEmail }) {
   useEffect(() => {
     const handleToggle = () => setMobileOpen(o => !o);
     window.addEventListener("toggleSidebar", handleToggle);
+    
+    // Initialize theme from local storage
+    if (typeof window !== "undefined") {
+      const savedTheme = localStorage.getItem("theme");
+      if (savedTheme === "light") {
+        setIsDarkMode(false);
+      }
+    }
+    
     return () => window.removeEventListener("toggleSidebar", handleToggle);
   }, []);
 
   useEffect(() => {
-    if (!isDarkMode) document.body.classList.add('light-mode');
-    else document.body.classList.remove('light-mode');
+    if (!isDarkMode) {
+      document.body.classList.add('light-mode');
+      localStorage.setItem("theme", "light");
+    } else {
+      document.body.classList.remove('light-mode');
+      localStorage.setItem("theme", "dark");
+    }
   }, [isDarkMode]);
 
   // Fetch accounts on mount
@@ -139,7 +153,7 @@ export default function SidebarClient({ userEmail }) {
               <img src="/logo-lv.png" alt="LV" width={16} height={16} style={{ objectFit: 'contain' }} onError={(e) => e.target.style.display='none'} />
             )}
             {!isSub && space.name === "Nanoliss" && (
-              <img src="/logo-nanoliss.png" alt="Nanoliss" width={16} height={16} style={{ objectFit: 'contain' }} onError={(e) => e.target.style.display='none'} />
+              <img className="logo-invert" src="/logo-nanoliss.png" alt="Nanoliss" width={16} height={16} style={{ objectFit: 'contain' }} onError={(e) => e.target.style.display='none'} />
             )}
             <span>{space.name}</span>
           </div>
@@ -186,7 +200,7 @@ export default function SidebarClient({ userEmail }) {
       }}>
         <div style={{ padding: '0 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '8px' }}>Organizer</h2>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '8px' }}>Linear Mail</h2>
           </div>
           <button 
             onClick={() => setIsDarkMode(!isDarkMode)}

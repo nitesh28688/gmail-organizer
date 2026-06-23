@@ -1,15 +1,18 @@
 import "./globals.css";
 import AuthProvider from "../components/AuthProvider";
 
+export const viewport = {
+  themeColor: "#030712",
+};
+
 export const metadata = {
-  title: "Linear Ventures Mail",
+  title: "Linear Mail",
   description: "A premium, custom email client and organizer.",
   manifest: "/manifest.json",
-  themeColor: "#030712",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Linear Ventures Mail",
+    title: "Linear Mail",
   },
 };
 
