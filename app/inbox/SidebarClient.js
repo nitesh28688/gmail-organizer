@@ -6,6 +6,8 @@ import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import ComposeModal from "./ComposeModal";
 
+import { signOut, signIn } from "next-auth/react";
+
 export default function SidebarClient({ spaces, userEmail }) {
   const searchParams = useSearchParams();
   const currentSpace = searchParams.get("space") || "All Mail";
@@ -33,27 +35,29 @@ export default function SidebarClient({ spaces, userEmail }) {
     }
   }, [isDarkMode]);
 
-  useEffect(() => {
-    let mounted = true;
-    const fetchCounts = async () => {
-      try {
-        const res = await fetch("/api/gmail/counts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ spaces }),
-        });
-        const data = await res.json();
-        if (mounted && data.counts) {
-          setCounts(data.counts);
-          setIsLoadingCounts(false);
-        }
-      } catch (e) {
-        console.error("Failed to fetch counts", e);
-        if (mounted) setIsLoadingCounts(false);
+  const fetchCounts = async () => {
+    try {
+      const res = await fetch("/api/gmail/counts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ spaces }),
+      });
+      const data = await res.json();
+      if (data.counts) {
+        setCounts(data.counts);
+        setIsLoadingCounts(false);
       }
-    };
+    } catch (e) {
+      console.error("Failed to fetch counts", e);
+      setIsLoadingCounts(false);
+    }
+  };
+
+  useEffect(() => {
     fetchCounts();
-    return () => { mounted = false; };
+    const handleRefresh = () => fetchCounts();
+    window.addEventListener("refreshCounts", handleRefresh);
+    return () => window.removeEventListener("refreshCounts", handleRefresh);
   }, [spaces]);
 
   const toggle = (e, name) => {
@@ -173,7 +177,45 @@ export default function SidebarClient({ spaces, userEmail }) {
         </nav>
       </div>
       
-      <div style={{ marginTop: 'auto' }}>
+      <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <button
+          onClick={() => signIn("google")}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '10px 12px',
+            borderRadius: '8px',
+            background: 'var(--glass-bg)',
+            border: '1px solid var(--glass-border)',
+            color: 'var(--text-primary)',
+            cursor: 'pointer',
+            fontSize: '0.9rem',
+            transition: 'background 0.2s',
+          }}
+          onMouseOver={(e) => e.currentTarget.style.background = 'var(--glass-border)'}
+          onMouseOut={(e) => e.currentTarget.style.background = 'var(--glass-bg)'}
+        >
+          ➕ Add Account
+        </button>
+        <button
+          onClick={() => signOut()}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '10px 12px',
+            borderRadius: '8px',
+            background: 'var(--glass-bg)',
+            border: '1px solid var(--glass-border)',
+            color: '#ef4444',
+            cursor: 'pointer',
+            fontSize: '0.9rem',
+            transition: 'background 0.2s',
+          }}
+          onMouseOver={(e) => e.currentTarget.style.background = 'var(--glass-border)'}
+          onMouseOut={(e) => e.currentTarget.style.background = 'var(--glass-bg)'}
+        >
+          🚪 Sign Out
+        </button>
         <Link href="/settings" style={{
           display: 'flex',
           alignItems: 'center',

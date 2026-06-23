@@ -9,11 +9,13 @@ export async function GET(request) {
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
+  const accountId = searchParams.get("accountId");
 
   if (!id) return NextResponse.json({ error: "Message ID required" }, { status: 400 });
+  if (!accountId) return NextResponse.json({ error: "Account ID required" }, { status: 400 });
 
   try {
-    const email = await getEmailBody(session.user.id, id);
+    const email = await getEmailBody(session.user.id, accountId, id);
     return NextResponse.json({ email });
   } catch (error) {
     console.error("Fetch Email Body Error:", error);

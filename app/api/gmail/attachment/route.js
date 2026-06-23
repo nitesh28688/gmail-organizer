@@ -10,15 +10,16 @@ export async function GET(request) {
   const url = new URL(request.url);
   const messageId = url.searchParams.get("messageId");
   const attachmentId = url.searchParams.get("id");
+  const accountId = url.searchParams.get("accountId");
   const mimeType = url.searchParams.get("mimeType") || "application/octet-stream";
   const filename = url.searchParams.get("filename") || "attachment";
 
-  if (!messageId || !attachmentId) {
+  if (!messageId || !attachmentId || !accountId) {
     return new NextResponse("Missing parameters", { status: 400 });
   }
 
   try {
-    const gmail = await getGmailClient(session.user.id);
+    const gmail = await getGmailClient(session.user.id, accountId);
     const res = await gmail.users.messages.attachments.get({
       userId: "me",
       messageId,

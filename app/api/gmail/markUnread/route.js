@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../../api/auth/[...nextauth]/route";
-import { deleteMessages } from "../../../../lib/gmail";
+import { authOptions } from "../../../auth/[...nextauth]/route";
+import { markAsUnread } from "../../../../../lib/gmail";
 import { NextResponse } from "next/server";
 
 export async function POST(request) {
@@ -10,15 +10,13 @@ export async function POST(request) {
   try {
     const { messages } = await request.json();
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return NextResponse.json({ error: "No messages provided" }, { status: 400 });
+      return NextResponse.json({ error: "Messages required" }, { status: 400 });
     }
 
-    await deleteMessages(session.user.id, messages);
-
-    return NextResponse.json({ success: true, count: messages.length });
+    await markAsUnread(session.user.id, messages);
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Batch Delete Error:", error);
+    console.error("Mark Unread Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-

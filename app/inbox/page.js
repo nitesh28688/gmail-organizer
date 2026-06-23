@@ -20,6 +20,7 @@ export default function InboxPage() {
   const [filterFrom, setFilterFrom] = useState("");
   const [filterSubject, setFilterSubject] = useState("");
   const [filterAttachment, setFilterAttachment] = useState(false);
+  const [filterUnread, setFilterUnread] = useState(false);
   
   // Multi-Select State
   const [selectedEmails, setSelectedEmails] = useState([]);
@@ -63,6 +64,7 @@ export default function InboxPage() {
       if (filterFrom) finalQuery += ` from:${filterFrom}`;
       if (filterSubject) finalQuery += ` subject:${filterSubject}`;
       if (filterAttachment) finalQuery += ` has:attachment`;
+      if (filterUnread) finalQuery += ` is:unread`;
 
       const res = await fetch(`/api/gmail/messages?q=${encodeURIComponent(finalQuery.trim())}`);
       const data = await res.json();
@@ -86,13 +88,28 @@ export default function InboxPage() {
     setFilterFrom("");
     setFilterSubject("");
     setFilterAttachment(false);
+    setFilterUnread(false);
     fetchInbox();
   }, [space]);
 
   const selectEmail = async (emailId) => {
     setLoadingBody(true);
     try {
-      const res = await fetch(`/api/gmail/message?id=${emailId}`);
+      const emailObj = emails.find(e => e.id === emailId);
+      if (emailObj && emailObj.isUnread) {
+        // Optimistically mark as read locally
+        setEmails(prev => prev.map(e => e.id === emailId ? { ...e, isUnread: false } : e));
+        fetch("/api/gmail/markRead", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: [{ id: emailId, accountId: emailObj.accountId }] })
+        }).then(() => {
+          window.dispatchEvent(new Event("refreshCounts"));
+        }).catch(console.error);
+      }
+
+      const accountIdParam = emailObj ? `&accountId=${emailObj.accountId}` : '';
+      const res = await fetch(`/api/gmail/message?id=${emailId}${accountIdParam}`);
       const data = await res.json();
       setActiveEmail(data.email);
     } catch (e) {
@@ -125,14 +142,61 @@ export default function InboxPage() {
     }
   };
 
+  const handleMarkReadSelected = async () => {
+    if (selectedEmails.length === 0) return;
+    setIsDeleting(true);
+    try {
+      const messages = emails.filter(e => selectedEmails.includes(e.id)).map(e => ({ id: e.id, accountId: e.accountId }));
+      const res = await fetch("/api/gmail/markRead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages })
+      });
+      if (!res.ok) throw new Error("Mark read failed");
+      
+      showToast(`${selectedEmails.length} messages marked as read ✅`);
+      setEmails(prev => prev.map(e => selectedEmails.includes(e.id) ? { ...e, isUnread: false } : e));
+      setSelectedEmails([]);
+      window.dispatchEvent(new Event("refreshCounts"));
+    } catch (e) {
+      showToast("Error marking messages as read");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleMarkUnreadSelected = async () => {
+    if (selectedEmails.length === 0) return;
+    setIsDeleting(true);
+    try {
+      const messages = emails.filter(e => selectedEmails.includes(e.id)).map(e => ({ id: e.id, accountId: e.accountId }));
+      const res = await fetch("/api/gmail/markUnread", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages })
+      });
+      if (!res.ok) throw new Error("Mark unread failed");
+      
+      showToast(`${selectedEmails.length} messages marked as unread ✉️`);
+      setEmails(prev => prev.map(e => selectedEmails.includes(e.id) ? { ...e, isUnread: true } : e));
+      setSelectedEmails([]);
+      window.dispatchEvent(new Event("refreshCounts"));
+    } catch (e) {
+      showToast("Error marking messages as unread");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleDeleteSelected = async () => {
     if (selectedEmails.length === 0) return;
     setIsDeleting(true);
     try {
+      const messages = emails.filter(e => selectedEmails.includes(e.id)).map(e => ({ id: e.id, accountId: e.accountId }));
       const res = await fetch("/api/gmail/trash", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messageIds: selectedEmails })
+        body: JSON.stringify({ messages })
       });
       if (!res.ok) throw new Error("Delete failed");
       
@@ -151,10 +215,11 @@ export default function InboxPage() {
     if (selectedEmails.length === 0) return;
     setIsDeleting(true);
     try {
+      const messages = emails.filter(e => selectedEmails.includes(e.id)).map(e => ({ id: e.id, accountId: e.accountId }));
       const res = await fetch("/api/gmail/untrash", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messageIds: selectedEmails })
+        body: JSON.stringify({ messages })
       });
       if (!res.ok) throw new Error("Restore failed");
       
@@ -173,10 +238,11 @@ export default function InboxPage() {
     if (selectedEmails.length === 0) return;
     setIsDeleting(true);
     try {
+      const messages = emails.filter(e => selectedEmails.includes(e.id)).map(e => ({ id: e.id, accountId: e.accountId }));
       const res = await fetch("/api/gmail/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messageIds: selectedEmails })
+        body: JSON.stringify({ messages })
       });
       if (!res.ok) throw new Error("Delete failed");
       
@@ -249,6 +315,10 @@ export default function InboxPage() {
                   <input type="checkbox" checked={filterAttachment} onChange={e => setFilterAttachment(e.target.checked)} />
                   Has Attachment
                 </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={filterUnread} onChange={e => setFilterUnread(e.target.checked)} />
+                  Unread Only
+                </label>
                 <button type="submit" className="btn-primary" style={{ padding: '6px', fontSize: '0.9rem', marginTop: '4px' }}>Apply Filters</button>
               </div>
             )}
@@ -285,13 +355,29 @@ export default function InboxPage() {
                     </button>
                   </>
                 ) : (
-                  <button 
-                    onClick={handleDeleteSelected} 
-                    disabled={isDeleting}
-                    style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 12px', borderRadius: '16px', fontSize: '0.8rem', cursor: 'pointer', opacity: isDeleting ? 0.5 : 1 }}
-                  >
-                    {isDeleting ? "Deleting..." : "🗑️ Trash"}
-                  </button>
+                  <>
+                    <button 
+                      onClick={handleMarkReadSelected} 
+                      disabled={isDeleting}
+                      style={{ background: 'var(--glass-bg)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)', padding: '4px 12px', borderRadius: '16px', fontSize: '0.8rem', cursor: 'pointer', opacity: isDeleting ? 0.5 : 1 }}
+                    >
+                      ✅ Read
+                    </button>
+                    <button 
+                      onClick={handleMarkUnreadSelected} 
+                      disabled={isDeleting}
+                      style={{ background: 'var(--glass-bg)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)', padding: '4px 12px', borderRadius: '16px', fontSize: '0.8rem', cursor: 'pointer', opacity: isDeleting ? 0.5 : 1 }}
+                    >
+                      ✉️ Unread
+                    </button>
+                    <button 
+                      onClick={handleDeleteSelected} 
+                      disabled={isDeleting}
+                      style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 12px', borderRadius: '16px', fontSize: '0.8rem', cursor: 'pointer', opacity: isDeleting ? 0.5 : 1 }}
+                    >
+                      {isDeleting ? "Deleting..." : "🗑️ Trash"}
+                    </button>
+                  </>
                 )}
               </div>
             ) : (
@@ -469,7 +555,7 @@ export default function InboxPage() {
                     {activeEmail.attachments.map((att, i) => (
                       <a 
                         key={i}
-                        href={`/api/gmail/attachment?messageId=${activeEmail.id}&id=${att.attachmentId}&filename=${encodeURIComponent(att.filename)}&mimeType=${encodeURIComponent(att.mimeType)}`}
+                        href={`/api/gmail/attachment?messageId=${activeEmail.id}&accountId=${activeEmail.accountId}&id=${att.attachmentId}&filename=${encodeURIComponent(att.filename)}&mimeType=${encodeURIComponent(att.mimeType)}`}
                         target="_blank"
                         rel="noreferrer"
                         style={{

@@ -10,8 +10,8 @@ export async function POST(req) {
   }
 
   try {
-    const body = await req.json();
-    const result = await sendEmail(session.user.id, body);
+    const { accountId, ...body } = await req.json();
+    const result = await sendEmail(session.user.id, accountId, body);
     return NextResponse.json({ success: true, result });
   } catch (error) {
     console.error("Failed to send email:", error);
