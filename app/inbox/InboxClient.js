@@ -101,22 +101,27 @@ export default function InboxPage() {
   }, [filterUnread]);
 
   const selectEmail = async (emailId) => {
+    const email = emails.find(e => e.id === emailId);
+    const actualAccountId = email ? email.accountId : activeAccountId;
+    if (!actualAccountId) return;
+    
+    if (email && email.isUnread) {
+      // Optimistic update
+      setEmails(emails.map(e => e.id === emailId ? { ...e, isUnread: false } : e));
+      
+      // Background API call
+      fetch("/api/gmail/markRead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [{ id: emailId, accountId: actualAccountId }] })
+      }).then(() => {
+        window.dispatchEvent(new Event("refreshCounts"));
+      }).catch(e => console.error("Failed to mark read", e));
+    }
+
     setLoadingBody(true);
     try {
-      const emailObj = emails.find(e => e.id === emailId);
-      if (emailObj && emailObj.isUnread) {
-        // Optimistically mark as read locally
-        setEmails(prev => prev.map(e => e.id === emailId ? { ...e, isUnread: false } : e));
-        fetch("/api/gmail/markRead", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: [{ id: emailId, accountId: emailObj.accountId }] })
-        }).then(() => {
-          window.dispatchEvent(new Event("refreshCounts"));
-        }).catch(console.error);
-      }
-
-      const accountIdParam = emailObj ? `&accountId=${emailObj.accountId}` : '';
+      const accountIdParam = actualAccountId ? `&accountId=${actualAccountId}` : "";
       const res = await fetch(`/api/gmail/message?id=${emailId}${accountIdParam}`);
       const data = await res.json();
       setActiveEmail(data.email);
