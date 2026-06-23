@@ -973,17 +973,22 @@ export default function InboxPage() {
                       <span>{new Date(msg.date).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
                     </div>
                   </div>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#ffffff', overflow: 'hidden', resize: 'vertical', minHeight: '250px' }}>
+                  <div style={{ background: '#ffffff' }}>
                     {msg.html ? (
-                      <iframe 
+                      <iframe
                         title={`msg-${msg.id}`}
                         srcDoc={`<!DOCTYPE html><html><head><style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #000000 !important; background-color: #ffffff !important; padding: 24px; margin: 0; word-wrap: break-word; } a { color: #2563eb; text-decoration: none; } a:hover { text-decoration: underline; } img { max-width: 100%; height: auto; border-radius: 4px; } table, div, td { color: inherit; }</style></head><body>${msg.html}</body></html>`}
-                        style={{ width: '100%', height: '100%', minHeight: '350px', border: 'none', background: '#ffffff', borderRadius: '0 0 14px 14px', display: 'block' }}
+                        onLoad={(e) => {
+                          try {
+                            const doc = e.target.contentWindow.document;
+                            const h = doc.documentElement.scrollHeight || doc.body.scrollHeight;
+                            e.target.style.height = `${h + 32}px`;
+                          } catch {}
+                        }}
+                        style={{ width: '100%', height: '0', minHeight: '200px', border: 'none', background: '#ffffff', borderRadius: '0 0 14px 14px', display: 'block' }}
                       />
                     ) : (
-                      <div style={{ width: '100%', height: '100%', overflowY: 'auto' }}>
-                        <pre style={{ padding: '24px', whiteSpace: 'pre-wrap', fontFamily: 'inherit', color: '#000', margin: 0 }}>{msg.text}</pre>
-                      </div>
+                      <pre style={{ padding: '24px', whiteSpace: 'pre-wrap', fontFamily: 'inherit', color: '#000', margin: 0, lineHeight: '1.6' }}>{msg.text}</pre>
                     )}
                   </div>
                   {msg.attachments && msg.attachments.length > 0 && (
