@@ -102,7 +102,16 @@ export default function ComposeModal({
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
 
+      if (draftId) {
+        await fetch("/api/gmail/draft", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ draftId, accountId: initialAccountId })
+        });
+      }
+
       window.dispatchEvent(new CustomEvent("toast", { detail: "Message sent successfully" }));
+      window.dispatchEvent(new Event("refreshCounts"));
       onClose(true);
     } catch (error) {
       console.error("Failed to send", error);

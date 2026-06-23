@@ -20,7 +20,7 @@ export async function POST(request) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
     let prompt = "";
     if (command === "Formalize") prompt = `Rewrite the following text to be more formal and professional, suitable for a business email. Output ONLY the rewritten text, nothing else. Text:\n\n${text}`;
