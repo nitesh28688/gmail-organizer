@@ -234,41 +234,61 @@ export default function ComposeModal({
           </select>
         </div>
 
-        <datalist id="contacts-list">
-          {contacts.map((contact, idx) => <option key={idx} value={contact} />)}
-        </datalist>
-
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--glass-border)', padding: '12px 16px' }}>
+        <div style={{ position: 'relative', display: 'flex', borderBottom: '1px solid var(--glass-border)', padding: '12px 16px' }}>
           <label style={{ width: '60px', color: 'var(--text-secondary)' }}>To:</label>
           <input 
-            type="email" 
-            list="contacts-list"
+            type="text"
             value={to}
             onChange={(e) => setTo(e.target.value)}
+            onFocus={() => { if (!contacts.includes(to)) document.getElementById('to-dropdown').style.display = 'block'; }}
+            onBlur={() => setTimeout(() => document.getElementById('to-dropdown').style.display = 'none', 200)}
             style={{ flex: 1, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', padding: '4px 8px', borderRadius: '4px', outline: 'none' }}
           />
+          <div id="to-dropdown" style={{ display: 'none', position: 'absolute', top: '100%', left: '76px', right: '16px', background: 'var(--bg-surface)', border: '1px solid var(--glass-border)', borderRadius: '8px', zIndex: 10, maxHeight: '200px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+            {contacts.filter(c => c.toLowerCase().includes(to.toLowerCase()) && c !== to).slice(0, 10).map((c, i) => (
+              <div key={i} onClick={() => { setTo(c); document.getElementById('to-dropdown').style.display = 'none'; }} style={{ padding: '8px 16px', cursor: 'pointer', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-primary)' }} onMouseOver={e => e.currentTarget.style.background='var(--glass-border)'} onMouseOut={e => e.currentTarget.style.background='transparent'}>
+                {c}
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--glass-border)', padding: '12px 16px' }}>
+        <div style={{ position: 'relative', display: 'flex', borderBottom: '1px solid var(--glass-border)', padding: '12px 16px' }}>
           <label style={{ width: '60px', color: 'var(--text-secondary)' }}>Cc:</label>
           <input 
-            type="email" 
-            list="contacts-list"
+            type="text"
             value={cc}
             onChange={(e) => setCc(e.target.value)}
+            onFocus={() => { if (!contacts.includes(cc)) document.getElementById('cc-dropdown').style.display = 'block'; }}
+            onBlur={() => setTimeout(() => document.getElementById('cc-dropdown').style.display = 'none', 200)}
             style={{ flex: 1, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', padding: '4px 8px', borderRadius: '4px', outline: 'none' }}
           />
+          <div id="cc-dropdown" style={{ display: 'none', position: 'absolute', top: '100%', left: '76px', right: '16px', background: 'var(--bg-surface)', border: '1px solid var(--glass-border)', borderRadius: '8px', zIndex: 10, maxHeight: '200px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+            {contacts.filter(c => c.toLowerCase().includes(cc.toLowerCase()) && c !== cc).slice(0, 10).map((c, i) => (
+              <div key={i} onClick={() => { setCc(c); document.getElementById('cc-dropdown').style.display = 'none'; }} style={{ padding: '8px 16px', cursor: 'pointer', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-primary)' }} onMouseOver={e => e.currentTarget.style.background='var(--glass-border)'} onMouseOut={e => e.currentTarget.style.background='transparent'}>
+                {c}
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--glass-border)', padding: '12px 16px' }}>
+        <div style={{ position: 'relative', display: 'flex', borderBottom: '1px solid var(--glass-border)', padding: '12px 16px' }}>
           <label style={{ width: '60px', color: 'var(--text-secondary)' }}>Bcc:</label>
           <input 
-            type="email" 
-            list="contacts-list"
+            type="text"
             value={bcc}
             onChange={(e) => setBcc(e.target.value)}
+            onFocus={() => { if (!contacts.includes(bcc)) document.getElementById('bcc-dropdown').style.display = 'block'; }}
+            onBlur={() => setTimeout(() => document.getElementById('bcc-dropdown').style.display = 'none', 200)}
             style={{ flex: 1, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', padding: '4px 8px', borderRadius: '4px', outline: 'none' }}
           />
+          <div id="bcc-dropdown" style={{ display: 'none', position: 'absolute', top: '100%', left: '76px', right: '16px', background: 'var(--bg-surface)', border: '1px solid var(--glass-border)', borderRadius: '8px', zIndex: 10, maxHeight: '200px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+            {contacts.filter(c => c.toLowerCase().includes(bcc.toLowerCase()) && c !== bcc).slice(0, 10).map((c, i) => (
+              <div key={i} onClick={() => { setBcc(c); document.getElementById('bcc-dropdown').style.display = 'none'; }} style={{ padding: '8px 16px', cursor: 'pointer', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-primary)' }} onMouseOver={e => e.currentTarget.style.background='var(--glass-border)'} onMouseOut={e => e.currentTarget.style.background='transparent'}>
+                {c}
+              </div>
+            ))}
+          </div>
         </div>
 
         <div style={{ display: 'flex', borderBottom: '1px solid var(--glass-border)', padding: '12px 16px' }}>

@@ -31,7 +31,7 @@ export async function POST(req) {
       await prisma.emailTracking.create({
         data: {
           id: trackingId,
-          messageId: result.data?.id || trackingId,
+          messageId: result.id || trackingId,
           subject: restBody.subject || "(No Subject)",
           recipient: restBody.to || "",
           userId: session.user.id

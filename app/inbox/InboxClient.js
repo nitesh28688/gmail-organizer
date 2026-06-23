@@ -84,7 +84,8 @@ export default function InboxPage() {
       if (result.draftId) {
         fetch("/api/gmail/draft", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draftId: result.draftId, accountId: result.payload.accountId }) }).catch(e => console.error(e));
         if (space === "Drafts") {
-          setTimeout(() => fetchInbox(), 500);
+          setEmails(prev => prev.filter(m => m.id !== result.draftId));
+          setActiveEmail(null);
         }
       }
 
@@ -734,7 +735,7 @@ export default function InboxPage() {
               initialDraftId={activeEmail.id}
               initialTo={activeEmail.to}
               initialSubject={activeEmail.subject}
-              initialBody={activeEmail.text || ""}
+              initialBody={activeEmail.threadMessages?.[activeEmail.threadMessages.length - 1]?.text || activeEmail.threadMessages?.[activeEmail.threadMessages.length - 1]?.html?.replace(/<br\\s*[\\/]?>/gi, '\\n').replace(/<[^>]+>/g, '') || ""}
               initialAttachments={activeEmail.attachments || []}
               contacts={contacts || []}
               isInline={true}
@@ -817,18 +818,35 @@ export default function InboxPage() {
                   </button>
               </div>
 
+              {/* AIAssistant Actions */}
+              {activeEmail.threadMessages && activeEmail.threadMessages.length > 0 && (
+                <div style={{ marginBottom: '24px' }}>
+                  <AIAssistant 
+                    emailContent={activeEmail.threadMessages.map(m => m.text || m.html?.replace(/<[^>]+>/g, '')).join('\n')}
+                    onAction={(action, result) => {
+                      if (action === 'reply') {
+                        setComposeTo(activeEmail.from);
+                        setComposeSubject(activeEmail.subject.startsWith('Re:') ? activeEmail.subject : `Re: ${activeEmail.subject}`);
+                        setComposeBody(result);
+                        setComposeOpen(true);
+                      }
+                    }}
+                  />
+                </div>
+              )}
+
               {/* Thread Messages */}
               {activeEmail.threadMessages && activeEmail.threadMessages.map((msg, index) => (
-                <div key={msg.id} style={{ marginBottom: '24px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'hidden' }}>
-                  <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--glass-border)', background: 'var(--glass-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div key={msg.id} style={{ marginBottom: '24px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '16px', overflow: 'hidden' }}>
+                  <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--glass-border)', background: 'var(--glass-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{msg.from}</div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>To: {msg.to}</div>
+                      <div style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '1.1rem' }}>{msg.from}</div>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>To: {msg.to}</div>
                     </div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {msg.isOpened && <span title={`Read at ${new Date(msg.openedAt).toLocaleString()}`} style={{ color: '#0ea5e9', fontSize: '1rem', fontWeight: 700 }}>✓✓</span>}
-                      {msg.isTracked && !msg.isOpened && <span title="Sent & Tracked" style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>✓</span>}
-                      {new Date(msg.date).toLocaleString()}
+                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {msg.isOpened && <span title={`Read at ${new Date(msg.openedAt).toLocaleString()}`} style={{ color: '#0ea5e9', fontSize: '1.1rem', fontWeight: 700 }}>✓✓</span>}
+                      {msg.isTracked && !msg.isOpened && <span title="Sent & Tracked" style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>✓</span>}
+                      <span>{new Date(msg.date).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
                     </div>
                   </div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#ffffff', overflow: 'hidden', resize: 'vertical', minHeight: '250px' }}>
@@ -836,7 +854,7 @@ export default function InboxPage() {
                       <iframe 
                         title={`msg-${msg.id}`}
                         srcDoc={`<!DOCTYPE html><html><head><style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #000000 !important; background-color: #ffffff !important; padding: 24px; margin: 0; word-wrap: break-word; } a { color: #2563eb; text-decoration: none; } a:hover { text-decoration: underline; } img { max-width: 100%; height: auto; border-radius: 4px; } table, div, td { color: inherit; }</style></head><body>${msg.html}</body></html>`}
-                        style={{ width: '100%', height: '100%', minHeight: '250px', border: 'none', background: '#ffffff' }}
+                        style={{ width: '100%', height: '100%', minHeight: '350px', border: 'none', background: '#ffffff' }}
                       />
                     ) : (
                       <div style={{ width: '100%', height: '100%', overflowY: 'auto' }}>
