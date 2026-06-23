@@ -419,38 +419,47 @@ export default function InboxPage() {
               </div>
 
               {/* Email Body */}
-              <iframe 
-                title="Email Body"
-                srcDoc={`
-                  <style>
-                    body { 
-                      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-                      line-height: 1.6; 
-                      color: #333; 
-                      padding: 24px;
-                      margin: 0;
-                    }
-                    a { color: #4a86e8; text-decoration: none; }
-                    a:hover { text-decoration: underline; }
-                    img { max-width: 100%; height: auto; border-radius: 8px; }
-                    @media (prefers-color-scheme: dark) {
-                      body { background: transparent; color: #fff; }
-                      a { color: #818cf8; }
-                    }
-                  </style>
-                  ${activeEmail.html || activeEmail.text?.replace(/\n/g, '<br/>') || "No content"}
-                `}
-                style={{ 
-                  width: '100%', 
-                  flex: 1,
-                  minHeight: '400px',
-                  border: 'none', 
-                  background: 'var(--bg-surface)', 
-                  borderRadius: '12px',
-                  marginTop: '0px',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.15)'
-                }}
-              />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#ffffff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.2)' }}>
+                <iframe 
+                  title="Email Body"
+                  srcDoc={`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                      <style>
+                        body { 
+                          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+                          line-height: 1.6; 
+                          color: #000000 !important; 
+                          background-color: #ffffff !important;
+                          padding: 24px;
+                          margin: 0;
+                          word-wrap: break-word;
+                        }
+                        a { color: #2563eb; text-decoration: none; }
+                        a:hover { text-decoration: underline; }
+                        img { max-width: 100%; height: auto; border-radius: 4px; }
+                        
+                        /* Force common containers to be readable */
+                        table, div, td {
+                          color: inherit;
+                        }
+                      </style>
+                    </head>
+                    <body>
+                      ${activeEmail.html || activeEmail.text?.replace(/\n/g, '<br/>') || "No content"}
+                    </body>
+                    </html>
+                  `}
+                  style={{ 
+                    width: '100%', 
+                    flex: 1,
+                    minHeight: '500px',
+                    border: 'none', 
+                    background: '#ffffff',
+                  }}
+                />
+              </div>
 
               {/* Attachments */}
               {activeEmail.attachments && activeEmail.attachments.length > 0 && (
