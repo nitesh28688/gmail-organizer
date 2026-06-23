@@ -472,7 +472,7 @@ export default function InboxPage() {
                     {email.subject}
                   </div>
                   <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', opacity: 0.8 }}>
-                    {email.snippet.replace(/&quot;/g, '"')}
+                    {(email.preview || email.snippet || "").replace(/&quot;/g, '"')}
                   </div>
                 </div>
               </div>
