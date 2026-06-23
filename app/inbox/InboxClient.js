@@ -95,10 +95,10 @@ export default function InboxPage() {
       }
     } else if (result.type === "SEND_NOW") {
       if (result.draftId) {
-        fetch("/api/gmail/draft", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draftId: result.draftId, accountId: result.payload.accountId }) }).catch(e => console.error(e));
+        const deletePromise = fetch("/api/gmail/draft", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draftId: result.draftId, accountId: result.payload.accountId }) }).catch(e => console.error(e));
         if (space === "Drafts") {
           setActiveEmail(null);
-          fetchInbox();
+          deletePromise.then(() => fetchInbox());
         }
       }
 
