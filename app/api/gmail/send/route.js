@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { sendEmail } from "../../../../lib/gmail";
+import { prisma } from "../../../../lib/prisma";
 import { NextResponse } from "next/server";
 
 export async function POST(req) {
@@ -26,8 +27,6 @@ export async function POST(req) {
 
     // Store tracking info in DB
     try {
-      const { PrismaClient } = require("@prisma/client");
-      const prisma = new PrismaClient();
       await prisma.emailTracking.create({
         data: {
           id: trackingId,
