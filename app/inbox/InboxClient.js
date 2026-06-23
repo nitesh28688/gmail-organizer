@@ -26,6 +26,7 @@ export default function InboxPage() {
   const [newLabelName, setNewLabelName] = useState("");
   const [creatingLabel, setCreatingLabel] = useState(false);
   const [apiContacts, setApiContacts] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   
   // Compose State
   const [composeOpen, setComposeOpen] = useState(false);
@@ -318,9 +319,12 @@ export default function InboxPage() {
     setFilterUnread(false);
     fetchInbox();
     
-    // Also fetch contacts
     fetch("/api/gmail/contacts").then(r => r.json()).then(d => {
       if (d.contacts) setApiContacts(d.contacts);
+    }).catch(e => console.error(e));
+
+    fetch("/api/gmail/accounts").then(r => r.json()).then(d => {
+      if (d.accounts) setAccounts(d.accounts);
     }).catch(e => console.error(e));
   }, [space, activeAccountId]);
 
@@ -787,9 +791,14 @@ export default function InboxPage() {
                       </span>
                     </div>
                     
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                       {isSentSpace && email.isOpened && <span title={`Read at ${new Date(email.openedAt).toLocaleString()}`} style={{ color: '#0ea5e9', fontSize: '0.9rem', fontWeight: 700 }}>✓✓</span>}
                       {isSentSpace && email.isTracked && !email.isOpened && <span title="Sent & Tracked" style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>✓</span>}
+                      {activeAccountId === 'unified' && (() => {
+                        const acct = accounts.find(a => a.id === email.accountId);
+                        const label = acct ? acct.email.split('@')[1].split('.')[0] : null;
+                        return label ? <span style={{ fontSize: '0.68rem', background: 'rgba(99,102,241,0.15)', color: 'var(--accent)', borderRadius: '4px', padding: '1px 5px', fontWeight: 600 }}>{label}</span> : null;
+                      })()}
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '400' }}>
                         {new Date(email.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                       </span>

@@ -111,11 +111,29 @@ export default function SettingsButtons() {
   // Custom rule form
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customName, setCustomName] = useState("");
-  const [customQuery, setCustomQuery] = useState("");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [customSubject, setCustomSubject] = useState("");
+  const [customKeywords, setCustomKeywords] = useState("");
+  const [customHasAttachment, setCustomHasAttachment] = useState(false);
   const [customLabel, setCustomLabel] = useState("");
   const [customArchive, setCustomArchive] = useState(false);
   const [customMarkRead, setCustomMarkRead] = useState(false);
+  const [showAdvancedQuery, setShowAdvancedQuery] = useState(false);
+  const [customRawQuery, setCustomRawQuery] = useState("");
   const [savingCustom, setSavingCustom] = useState(false);
+
+  const buildCustomQuery = () => {
+    if (showAdvancedQuery && customRawQuery) return customRawQuery;
+    const parts = [];
+    if (customFrom) parts.push(`from:${customFrom}`);
+    if (customTo) parts.push(`to:${customTo}`);
+    if (customSubject) parts.push(`subject:"${customSubject}"`);
+    if (customKeywords) parts.push(customKeywords);
+    if (customHasAttachment) parts.push("has:attachment");
+    parts.push("-in:trash -in:draft");
+    return parts.join(" ");
+  };
 
   // Signature
   const [signature, setSignature] = useState("");
@@ -184,17 +202,23 @@ export default function SettingsButtons() {
 
   const addCustomRule = async (e) => {
     e.preventDefault();
+    const query = buildCustomQuery();
+    if (!query.replace("-in:trash -in:draft", "").trim()) {
+      alert("Add at least one condition (From, To, Subject, or Keywords).");
+      return;
+    }
     setSavingCustom(true);
     try {
       const res = await fetch("/api/gmail/rules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: customName, query: customQuery, labelName: customLabel, archive: customArchive, markRead: customMarkRead })
+        body: JSON.stringify({ name: customName, query, labelName: customLabel, archive: customArchive, markRead: customMarkRead })
       });
       const data = await res.json();
       setRules(prev => [...prev, data.rule]);
-      setCustomName(""); setCustomQuery(""); setCustomLabel("");
-      setCustomArchive(false); setCustomMarkRead(false);
+      setCustomName(""); setCustomFrom(""); setCustomTo(""); setCustomSubject("");
+      setCustomKeywords(""); setCustomHasAttachment(false); setCustomLabel("");
+      setCustomArchive(false); setCustomMarkRead(false); setCustomRawQuery("");
       setShowCustomForm(false);
     } catch (e) { console.error(e); }
     finally { setSavingCustom(false); }
@@ -337,21 +361,59 @@ export default function SettingsButtons() {
           <form onSubmit={addCustomRule} style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '20px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Rule name</label>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Rule name *</label>
                 <input value={customName} onChange={e => setCustomName(e.target.value)} required placeholder="e.g. Client Emails" style={inputStyle} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Label to apply</label>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Label to apply *</label>
                 <input value={customLabel} onChange={e => setCustomLabel(e.target.value)} required placeholder="e.g. Clients/Important" style={inputStyle} />
               </div>
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                Gmail search query — <a href="https://support.google.com/mail/answer/7190" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>syntax guide</a>
-              </label>
-              <input value={customQuery} onChange={e => setCustomQuery(e.target.value)} required placeholder='e.g. from:client@company.com OR subject:"project update"' style={inputStyle} />
-            </div>
-            <div style={{ display: 'flex', gap: '24px' }}>
+
+            {!showAdvancedQuery ? (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>From contains</label>
+                    <input value={customFrom} onChange={e => setCustomFrom(e.target.value)} placeholder="e.g. newsletter@company.com" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>To contains</label>
+                    <input value={customTo} onChange={e => setCustomTo(e.target.value)} placeholder="e.g. me@mycompany.com" style={inputStyle} />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Subject contains</label>
+                  <input value={customSubject} onChange={e => setCustomSubject(e.target.value)} placeholder="e.g. invoice" style={inputStyle} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Keywords (any of these words appear anywhere)</label>
+                  <input value={customKeywords} onChange={e => setCustomKeywords(e.target.value)} placeholder="e.g. refund OR cancellation OR dispute" style={inputStyle} />
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={customHasAttachment} onChange={e => setCustomHasAttachment(e.target.checked)} />
+                  Has attachment
+                </label>
+                {(customFrom || customTo || customSubject || customKeywords || customHasAttachment) && (
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.15)', borderRadius: '6px', padding: '8px 12px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                    Query: {buildCustomQuery()}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                  Raw Gmail query — <a href="https://support.google.com/mail/answer/7190" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>syntax guide ↗</a>
+                </label>
+                <input value={customRawQuery} onChange={e => setCustomRawQuery(e.target.value)} placeholder='from:client@company.com OR subject:"project update"' style={inputStyle} />
+              </div>
+            )}
+
+            <button type="button" onClick={() => setShowAdvancedQuery(v => !v)} style={{ alignSelf: 'flex-start', background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.82rem', cursor: 'pointer', padding: 0 }}>
+              {showAdvancedQuery ? '← Use condition builder' : 'Advanced: write raw query →'}
+            </button>
+
+            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', cursor: 'pointer' }}>
                 <Toggle on={customArchive} onChange={() => setCustomArchive(v => !v)} />
                 Archive (remove from inbox)

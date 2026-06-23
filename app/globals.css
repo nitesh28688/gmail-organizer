@@ -207,13 +207,14 @@ body.light-mode ::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.3)
 /* Logo Invert */
 body.light-mode .logo-invert { filter: invert(1) brightness(0.5); }
 
-/* Rich text editor placeholder */
-[contenteditable][data-placeholder]:empty::before {
-  content: attr(data-placeholder);
-  color: var(--text-secondary);
-  pointer-events: none;
-  opacity: 0.6;
-}
+/* Tiptap editor */
+.lm-editor { outline: none; min-height: 220px; padding: 16px; line-height: 1.6; color: var(--text-primary); font-family: inherit; }
+.lm-editor p { margin: 0 0 8px; }
+.lm-editor p:last-child { margin-bottom: 0; }
+.lm-editor a { color: #2563eb; text-decoration: underline; }
+.lm-editor ul { padding-left: 20px; margin: 0 0 8px; }
+.lm-editor strong { font-weight: 700; }
+.lm-editor.is-editor-empty::before { content: attr(data-placeholder); color: var(--text-secondary); opacity: 0.5; pointer-events: none; float: left; height: 0; }
 
 /* Mobile action buttons — larger touch targets */
 @media (max-width: 768px) {
