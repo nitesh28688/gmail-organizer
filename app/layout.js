@@ -20,6 +20,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
+        <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem('theme')==='light')document.body.classList.add('light-mode')}catch(e){}` }} />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
