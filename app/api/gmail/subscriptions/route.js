@@ -55,7 +55,9 @@ export async function GET(request) {
     const result = Array.from(subscriptions.values())
       .sort((a, b) => b.count - a.count);
 
-    return NextResponse.json({ subscriptions: result });
+    return NextResponse.json({ subscriptions: result }, {
+      headers: { "Cache-Control": "no-store, no-cache, must-revalidate" }
+    });
   } catch (error) {
     console.error("Subscriptions error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

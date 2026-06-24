@@ -12,7 +12,9 @@ export async function GET(request) {
 
   try {
     const spaces = await getSidebarSpaces(session.user.id, accountId);
-    return NextResponse.json({ spaces });
+    return NextResponse.json({ spaces }, {
+      headers: { "Cache-Control": "no-store, no-cache, must-revalidate" }
+    });
   } catch (error) {
     console.error("Fetch Spaces Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

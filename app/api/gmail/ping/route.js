@@ -22,7 +22,9 @@ export async function GET(request) {
       }
     }
 
-    return NextResponse.json({ lastPushAt });
+    return NextResponse.json({ lastPushAt }, {
+      headers: { "Cache-Control": "no-store, no-cache, must-revalidate" }
+    });
   } catch (error) {
     console.error("Ping Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

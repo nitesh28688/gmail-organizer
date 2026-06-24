@@ -9,7 +9,9 @@ export async function GET(request) {
 
   try {
     const accounts = await getConnectedAccounts(session.user.id);
-    return NextResponse.json({ accounts });
+    return NextResponse.json({ accounts }, {
+      headers: { "Cache-Control": "no-store, no-cache, must-revalidate" }
+    });
   } catch (error) {
     console.error("Fetch Accounts Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

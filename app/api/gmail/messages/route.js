@@ -14,7 +14,9 @@ export async function GET(request) {
 
   try {
     const { emails, nextPageToken } = await fetchEmails(session.user.id, accountId, q, pageToken);
-    return NextResponse.json({ emails, nextPageToken });
+    return NextResponse.json({ emails, nextPageToken }, {
+      headers: { "Cache-Control": "no-store, no-cache, must-revalidate" }
+    });
   } catch (error) {
     console.error("Fetch Emails Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

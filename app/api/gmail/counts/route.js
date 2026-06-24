@@ -92,7 +92,9 @@ export async function POST(request) {
       }
     }));
 
-    return NextResponse.json({ counts: results });
+    return NextResponse.json({ counts: results }, {
+      headers: { "Cache-Control": "no-store, no-cache, must-revalidate" }
+    });
   } catch (error) {
     console.error("Counts API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

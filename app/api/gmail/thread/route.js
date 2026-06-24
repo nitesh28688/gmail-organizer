@@ -16,7 +16,9 @@ export async function GET(request) {
 
   try {
     const threadMessages = await getThread(session.user.id, accountId, threadId);
-    return NextResponse.json({ messages: threadMessages });
+    return NextResponse.json({ messages: threadMessages }, {
+      headers: { "Cache-Control": "no-store, no-cache, must-revalidate" }
+    });
   } catch (error) {
     console.error("Fetch Thread Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
