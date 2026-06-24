@@ -335,7 +335,11 @@ export default function InboxPage() {
       const finalQuery = buildQuery();
       const res = await fetch(`/api/gmail/messages?q=${encodeURIComponent(finalQuery)}&accountId=${activeAccountId}&pageToken=${nextPageToken}`);
       const data = await res.json();
-      setEmails(prev => [...prev, ...(data.emails || [])]);
+      setEmails(prev => {
+        const combined = [...prev, ...(data.emails || [])];
+        combined.sort((a, b) => b.internalDate - a.internalDate);
+        return combined;
+      });
       setNextPageToken(data.nextPageToken || null);
     } catch (e) {
       console.error("Failed to load more emails", e);
@@ -571,8 +575,17 @@ export default function InboxPage() {
         body: JSON.stringify({ messages: [{ id: email.id, accountId: email.accountId }] })
       });
       showToast("Archived 📦");
-      setEmails(prev => prev.filter(m => m.id !== email.id));
-      if (activeEmail?.id === email.id) setActiveEmail(null);
+      setEmails(prev => {
+        const filtered = prev.filter(m => m.id !== email.id);
+        if (activeEmail?.id === email.id && filtered.length > 0) {
+          const idx = prev.findIndex(m => m.id === email.id);
+          const nextIdx = idx < filtered.length ? idx : Math.max(0, filtered.length - 1);
+          setActiveEmail(filtered[nextIdx]);
+        } else if (activeEmail?.id === email.id) {
+          setActiveEmail(null);
+        }
+        return filtered;
+      });
       window.dispatchEvent(new Event("refreshCounts"));
     } catch { showToast("Error archiving"); }
   };
@@ -584,8 +597,17 @@ export default function InboxPage() {
         body: JSON.stringify({ messages: [{ id: email.id, accountId: email.accountId }] })
       });
       showToast("Marked as spam");
-      setEmails(prev => prev.filter(m => m.id !== email.id));
-      if (activeEmail?.id === email.id) setActiveEmail(null);
+      setEmails(prev => {
+        const filtered = prev.filter(m => m.id !== email.id);
+        if (activeEmail?.id === email.id && filtered.length > 0) {
+          const idx = prev.findIndex(m => m.id === email.id);
+          const nextIdx = idx < filtered.length ? idx : Math.max(0, filtered.length - 1);
+          setActiveEmail(filtered[nextIdx]);
+        } else if (activeEmail?.id === email.id) {
+          setActiveEmail(null);
+        }
+        return filtered;
+      });
     } catch { showToast("Error marking spam"); }
   };
 
