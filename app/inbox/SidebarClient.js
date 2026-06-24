@@ -124,7 +124,7 @@ export default function SidebarClient({ userEmail }) {
     return (
       <div key={space.name}>
         <Link 
-          href={`/inbox?space=${encodeURIComponent(space.name)}&account=${activeAccountId}`}
+          href={`/inbox?space=${encodeURIComponent(space.name)}&account=${activeAccountId}${space.labelId ? `&labelId=${space.labelId}` : ''}`}
           style={{
             display: 'flex',
             justifyContent: 'space-between',

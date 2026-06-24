@@ -38,12 +38,20 @@ export async function POST(request) {
       const labelId = LABEL_ID[space.name];
 
       if (labelId) {
-        // Exact count from Gmail label API
+        // Exact count from Gmail system label API
         try {
           const res = await gmail.users.labels.get({ userId: "me", id: labelId });
           results[space.name] = space.name === "Drafts"
             ? (res.data.threadsTotal || 0)
             : (res.data.messagesUnread || 0);
+        } catch {
+          results[space.name] = 0;
+        }
+      } else if (space.labelId) {
+        // Organizer/* label — exact total from Gmail label API
+        try {
+          const res = await gmail.users.labels.get({ userId: "me", id: space.labelId });
+          results[space.name] = res.data.messagesTotal || 0;
         } catch {
           results[space.name] = 0;
         }

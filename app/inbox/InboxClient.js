@@ -11,6 +11,7 @@ export default function InboxPage() {
   const searchParams = useSearchParams();
   const space = searchParams.get("space") || "Inbox";
   const activeAccountId = searchParams.get("account") || "";
+  const activeLabelId = searchParams.get("labelId") || "";
   
   const [emails, setEmails] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +50,10 @@ export default function InboxPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [nextPageToken, setNextPageToken] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
+  const [showSubscriptions, setShowSubscriptions] = useState(false);
+  const [subscriptions, setSubscriptions] = useState(null);
+  const [loadingSubscriptions, setLoadingSubscriptions] = useState(false);
   const [threadSearch, setThreadSearch] = useState("");
   const [showShortcuts, setShowShortcuts] = useState(false);
   const touchStartX = useRef(null);
@@ -303,6 +308,8 @@ export default function InboxPage() {
     setActiveEmail(null);
     setSelectedEmails([]);
     setNextPageToken(null);
+    setShowSubscriptions(false);
+    setSubscriptions(null);
     try {
       const finalQuery = buildQuery();
       const res = await fetch(`/api/gmail/messages?q=${encodeURIComponent(finalQuery)}&accountId=${activeAccountId}`);
@@ -615,6 +622,33 @@ export default function InboxPage() {
     }
   };
 
+  const handleDeleteAll = async () => {
+    if (!activeLabelId) return;
+    if (!window.confirm(`Permanently delete ALL emails in "${space}"? This cannot be undone.`)) return;
+    setDeletingAll(true);
+    try {
+      await fetch("/api/gmail/deleteByLabel", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ labelId: activeLabelId, accountId: activeAccountId })
+      });
+      showToast(`All emails in ${space} deleted`);
+      fetchInbox();
+    } catch { showToast("Error deleting emails"); }
+    finally { setDeletingAll(false); }
+  };
+
+  const loadSubscriptions = async () => {
+    setShowSubscriptions(true);
+    if (subscriptions !== null) return;
+    setLoadingSubscriptions(true);
+    try {
+      const res = await fetch(`/api/gmail/subscriptions?accountId=${activeAccountId}`);
+      const data = await res.json();
+      setSubscriptions(data.subscriptions || []);
+    } catch { setSubscriptions([]); }
+    finally { setLoadingSubscriptions(false); }
+  };
+
   const isSentSpace = space === "Sent";
   const isDraftSpace = space === "Drafts";
   const isTrashSpace = space === "Trash";
@@ -721,6 +755,51 @@ export default function InboxPage() {
             )}
           </form>
         </div>
+
+        {/* Label-specific actions bar */}
+        {activeLabelId && !loading && (
+          <div style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid var(--glass-border)', background: 'var(--bg-surface)', flexWrap: 'wrap' }}>
+            {space === 'Newsletters' && (
+              <button onClick={loadSubscriptions} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '5px 14px', borderRadius: '16px', fontSize: '0.82rem', cursor: 'pointer', fontWeight: 600 }}>
+                📋 Manage Subscriptions
+              </button>
+            )}
+            <button onClick={handleDeleteAll} disabled={deletingAll} style={{ background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', padding: '5px 14px', borderRadius: '16px', fontSize: '0.82rem', cursor: 'pointer', opacity: deletingAll ? 0.6 : 1, marginLeft: 'auto' }}>
+              {deletingAll ? 'Deleting…' : `🗑️ Delete all in ${space}`}
+            </button>
+          </div>
+        )}
+
+        {/* Subscription manager panel */}
+        {showSubscriptions && (
+          <div className="pop-in" style={{ margin: '0', borderBottom: '1px solid var(--glass-border)', background: 'var(--bg-surface)' }}>
+            <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--glass-border)' }}>
+              <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>📋 Subscriptions detected in your Newsletters folder</span>
+              <button onClick={() => setShowSubscriptions(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '1.2rem' }}>×</button>
+            </div>
+            {loadingSubscriptions ? (
+              <div style={{ padding: '20px 16px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Scanning newsletters…</div>
+            ) : subscriptions && subscriptions.length === 0 ? (
+              <div style={{ padding: '20px 16px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No unsubscribe links found in recent newsletters.</div>
+            ) : (
+              <div style={{ maxHeight: '280px', overflowY: 'auto' }}>
+                {(subscriptions || []).map((s, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', borderBottom: '1px solid var(--glass-border)' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.88rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.email}</div>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', flexShrink: 0 }}>{s.count} email{s.count !== 1 ? 's' : ''}</span>
+                    <a href={s.unsubscribeUrl} target="_blank" rel="noreferrer"
+                      style={{ flexShrink: 0, background: '#ef4444', color: '#fff', border: 'none', padding: '4px 12px', borderRadius: '12px', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none', cursor: 'pointer' }}>
+                      Unsubscribe
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Bulk Action / Select All Header */}
         {!loading && emails.length > 0 && (
