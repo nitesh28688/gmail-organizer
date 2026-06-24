@@ -18,7 +18,7 @@ export default function SidebarClient({ userEmail }) {
   const [spaces, setSpaces] = useState([]);
   
   const [isComposing, setIsComposing] = useState(false);
-  const [expanded, setExpanded] = useState({ "Linear Ventures": false, "Nanoliss": false });
+  const [expanded, setExpanded] = useState({ "Linear Ventures": false, "Nanoliss": false, "Categories": true });
   const [counts, setCounts] = useState({});
   const [isLoadingCounts, setIsLoadingCounts] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -120,10 +120,30 @@ export default function SidebarClient({ userEmail }) {
     const hasSub = space.subSpaces && space.subSpaces.length > 0;
     const isExpanded = expanded[space.name];
     const unread = counts[space.name] || 0;
+    const isGroupHeader = space.query === null; // Categories parent — not clickable
+
+    if (isGroupHeader) {
+      return (
+        <div key={space.name}>
+          <div
+            onClick={() => setExpanded(prev => ({ ...prev, [space.name]: !prev[space.name] }))}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', userSelect: 'none' }}
+          >
+            <span style={{ fontSize: '0.7rem' }}>{isExpanded ? '▼' : '▶'}</span>
+            {space.name}
+          </div>
+          {isExpanded && space.subSpaces && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {space.subSpaces.map(sub => renderSpace(sub, true))}
+            </div>
+          )}
+        </div>
+      );
+    }
 
     return (
       <div key={space.name}>
-        <Link 
+        <Link
           href={`/inbox?space=${encodeURIComponent(space.name)}&account=${activeAccountId}${space.labelId ? `&labelId=${space.labelId}` : ''}`}
           style={{
             display: 'flex',

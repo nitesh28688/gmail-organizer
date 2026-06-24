@@ -285,7 +285,8 @@ export default function InboxPage() {
     else if (space === "Nanoliss") baseQuery = "(to:nanoliss.in OR from:nanoliss.in OR to:nanoliss.com OR from:nanoliss.com) -in:trash -in:draft";
     else if (space === "Services") baseQuery = "(receipt OR invoice OR order OR service) -in:trash -in:draft";
     else if (space === "Finance") baseQuery = "(bank OR statement OR payment OR finance) -in:trash -in:draft";
-    else baseQuery = `(to:${space} OR from:${space}) -in:trash -in:draft`;
+    else if (space === "Categories") baseQuery = "in:inbox"; // fallback, shouldn't be clicked
+    else baseQuery = `label:"Organizer/${space}" -in:trash`;
     let q = baseQuery;
     if (searchQuery) q += ` ${searchQuery}`;
     if (filterTo) q += ` to:${filterTo}`;
