@@ -348,6 +348,13 @@ export default function InboxPage() {
     }
   };
 
+  const invalidateCache = () => {
+    if (typeof window !== 'undefined' && window.emailCache) {
+      const cacheKey = `${space}_${activeAccountId}`;
+      delete window.emailCache[cacheKey];
+    }
+  };
+
   // Re-fetch when space or account changes
   useEffect(() => {
     setSearchQuery("");
@@ -575,6 +582,7 @@ export default function InboxPage() {
         body: JSON.stringify({ messages: [{ id: email.id, accountId: email.accountId }] })
       });
       showToast("Archived 📦");
+      invalidateCache();
       setEmails(prev => {
         const filtered = prev.filter(m => m.id !== email.id);
         if (activeEmail?.id === email.id && filtered.length > 0) {
@@ -597,6 +605,7 @@ export default function InboxPage() {
         body: JSON.stringify({ messages: [{ id: email.id, accountId: email.accountId }] })
       });
       showToast("Marked as spam");
+      invalidateCache();
       setEmails(prev => {
         const filtered = prev.filter(m => m.id !== email.id);
         if (activeEmail?.id === email.id && filtered.length > 0) {
@@ -637,6 +646,7 @@ export default function InboxPage() {
       showToast(`${selectedEmails.length} messages archived 📦`);
       if (selectedEmails.includes(activeEmail?.id)) setActiveEmail(null);
       setSelectedEmails([]);
+      invalidateCache();
       fetchInbox();
     } catch (e) {
       showToast("Error archiving messages");
@@ -655,6 +665,7 @@ export default function InboxPage() {
         body: JSON.stringify({ labelId: activeLabelId, accountId: activeAccountId })
       });
       showToast(`All emails in ${space} deleted`);
+      invalidateCache();
       fetchInbox();
     } catch { showToast("Error deleting emails"); }
     finally { setDeletingAll(false); }
