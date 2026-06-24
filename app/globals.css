@@ -216,6 +216,12 @@ body.light-mode .logo-invert { filter: invert(1) brightness(0.5); }
 .lm-editor strong { font-weight: 700; }
 .lm-editor.is-editor-empty::before { content: attr(data-placeholder); color: var(--text-secondary); opacity: 0.5; pointer-events: none; float: left; height: 0; }
 
+/* Email row hover — visible in both light and dark mode */
+.email-row { transition: background 0.15s; }
+.email-row:hover .email-row-actions { opacity: 1 !important; }
+body:not(.light-mode) .email-row:hover { background: rgba(255,255,255,0.06) !important; }
+body.light-mode .email-row:hover { background: rgba(0,0,0,0.05) !important; }
+
 /* Mobile action buttons — larger touch targets */
 @media (max-width: 768px) {
   .mobile-drawer {

@@ -52,6 +52,9 @@ export default function InboxPage() {
   const [threadSearch, setThreadSearch] = useState("");
   const [showShortcuts, setShowShortcuts] = useState(false);
   const touchStartX = useRef(null);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const focusedIndexRef = useRef(-1);
+  useEffect(() => { focusedIndexRef.current = focusedIndex; }, [focusedIndex]);
 
   // Toast State
   const [toast, setToast] = useState(null);
@@ -378,9 +381,19 @@ export default function InboxPage() {
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
       if (e.ctrlKey || e.metaKey) return;
+      const fi = focusedIndexRef.current;
 
       if (e.key === 'j' && !activeEmail) {
-        // Move focus down (simple simulation for now by selecting first or next)
+        e.preventDefault();
+        setFocusedIndex(i => Math.min(i + 1, emails.length - 1));
+      } else if (e.key === 'k' && !activeEmail) {
+        e.preventDefault();
+        setFocusedIndex(i => Math.max(i - 1, 0));
+      } else if ((e.key === 'Enter' || e.key === 'o') && !activeEmail && fi >= 0 && emails[fi]) {
+        handleEmailClick(emails[fi]);
+      } else if (e.key === 'e') {
+        const target = activeEmail || (fi >= 0 ? emails[fi] : null);
+        if (target) handleArchiveEmail(target);
       } else if (e.key === 'r' && activeEmail) {
         setComposeTo(activeEmail.from);
         setComposeSubject(`Re: ${activeEmail.subject}`);
@@ -397,7 +410,7 @@ export default function InboxPage() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeEmail]);
+  }, [activeEmail, emails]);
 
   useEffect(() => {
     const openCompose = () => {
@@ -543,6 +556,43 @@ export default function InboxPage() {
     }
   };
 
+  const handleArchiveEmail = async (email) => {
+    try {
+      await fetch("/api/gmail/archive", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [{ id: email.id, accountId: email.accountId }] })
+      });
+      showToast("Archived 📦");
+      setEmails(prev => prev.filter(m => m.id !== email.id));
+      if (activeEmail?.id === email.id) setActiveEmail(null);
+      window.dispatchEvent(new Event("refreshCounts"));
+    } catch { showToast("Error archiving"); }
+  };
+
+  const handleSpamEmail = async (email) => {
+    try {
+      await fetch("/api/gmail/spam", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [{ id: email.id, accountId: email.accountId }] })
+      });
+      showToast("Marked as spam");
+      setEmails(prev => prev.filter(m => m.id !== email.id));
+      if (activeEmail?.id === email.id) setActiveEmail(null);
+    } catch { showToast("Error marking spam"); }
+  };
+
+  const handleToggleImportant = async (email) => {
+    const action = email.isImportant ? "UNMARK" : "MARK";
+    setEmails(prev => prev.map(m => m.id === email.id ? { ...m, isImportant: !m.isImportant } : m));
+    if (activeEmail?.id === email.id) setActiveEmail(prev => ({ ...prev, isImportant: !prev.isImportant }));
+    try {
+      await fetch("/api/gmail/important", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, messages: [{ id: email.id, accountId: email.accountId }] })
+      });
+    } catch { showToast("Error toggling important"); }
+  };
+
   const handleArchiveSelected = async () => {
     if (selectedEmails.length === 0) return;
     setIsDeleting(true);
@@ -636,7 +686,7 @@ export default function InboxPage() {
             {showShortcuts && (
               <div className="pop-in" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '16px', marginTop: '8px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', fontSize: '0.82rem' }}>
                 <div style={{ gridColumn: '1/-1', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Keyboard Shortcuts</div>
-                {[['c', 'Compose'], ['r', 'Reply to open email'], ['Esc', 'Close email'], ['⌘/Ctrl+K', 'Command palette']].map(([key, label]) => (
+                {[['c', 'Compose'], ['r', 'Reply'], ['e', 'Archive'], ['j/k', 'Next/prev email'], ['Enter', 'Open focused email'], ['Esc', 'Close email'], ['⌘/Ctrl+K', 'Command palette']].map(([key, label]) => (
                   <div key={key} style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
                     <kbd style={{ background: 'var(--bg-surface)', border: '1px solid var(--glass-border)', borderRadius: '4px', padding: '2px 7px', fontFamily: 'monospace', color: 'var(--text-primary)' }}>{key}</kbd>
                     <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
@@ -773,25 +823,21 @@ export default function InboxPage() {
             const isSelected = selectedEmails.includes(email.id);
             const isActive = activeEmail?.id === email.id;
 
+            const isFocused = focusedIndex === emails.indexOf(email);
             return (
-              <div 
+              <div
                 key={email.id}
-                onClick={() => handleEmailClick(email)}
+                className="email-row"
+                onClick={() => { setFocusedIndex(emails.indexOf(email)); handleEmailClick(email); }}
                 style={{
                   padding: '16px',
                   borderBottom: '1px solid var(--glass-border)',
                   cursor: 'pointer',
-                  background: isSelected ? 'rgba(99, 102, 241, 0.15)' : (isActive ? 'var(--glass-bg)' : 'transparent'),
-                  borderLeft: isSelected ? '4px solid var(--accent)' : '4px solid transparent',
-                  transition: 'background 0.2s',
+                  background: isSelected ? 'rgba(99,102,241,0.15)' : (isActive ? 'var(--glass-bg)' : 'transparent'),
+                  borderLeft: isFocused && !isActive ? '3px solid var(--accent)' : (isSelected ? '4px solid var(--accent)' : '4px solid transparent'),
                   display: 'flex',
-                  gap: '12px'
-                }}
-                onMouseOver={(e) => {
-                  if (!isSelected && !isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                }}
-                onMouseOut={(e) => {
-                  if (!isSelected && !isActive) e.currentTarget.style.background = 'transparent';
+                  gap: '12px',
+                  position: 'relative',
                 }}
               >
                 <div onClick={(e) => e.stopPropagation()} style={{ paddingTop: '2px' }}>
@@ -830,11 +876,17 @@ export default function InboxPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                       {isSentSpace && email.isOpened && <span title={`Read at ${new Date(email.openedAt).toLocaleString()}`} style={{ color: '#0ea5e9', fontSize: '0.9rem', fontWeight: 700 }}>✓✓</span>}
                       {isSentSpace && email.isTracked && !email.isOpened && <span title="Sent & Tracked" style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>✓</span>}
+                      {email.isImportant && <span title="Important" style={{ color: '#f59e0b', fontSize: '0.8rem' }}>⬧</span>}
                       {activeAccountId === 'unified' && (() => {
                         const acct = accounts.find(a => a.id === email.accountId);
                         const label = acct ? acct.email.split('@')[1].split('.')[0] : null;
                         return label ? <span style={{ fontSize: '0.68rem', background: 'rgba(99,102,241,0.15)', color: 'var(--accent)', borderRadius: '4px', padding: '1px 5px', fontWeight: 600 }}>{label}</span> : null;
                       })()}
+                      {/* Hover quick actions */}
+                      <div className="email-row-actions" onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: '2px', opacity: 0, transition: 'opacity 0.15s' }}>
+                        <button onClick={() => handleArchiveEmail(email)} title="Archive (E)" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>📦</button>
+                        <button onClick={() => { fetch("/api/gmail/trash", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: [{ id: email.id, accountId: email.accountId }] }) }); setEmails(prev => prev.filter(m => m.id !== email.id)); }} title="Trash" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>🗑️</button>
+                      </div>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '400' }}>
                         {new Date(email.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                       </span>
@@ -951,20 +1003,23 @@ export default function InboxPage() {
                        </div>
                     )}
                   </div>
-                  <button 
+                  <button onClick={() => handleToggleImportant(activeEmail)} className="thread-action-btn" style={{ background: activeEmail.isImportant ? 'rgba(245,158,11,0.15)' : 'transparent', border: '1px solid var(--glass-border)', color: activeEmail.isImportant ? '#f59e0b' : 'var(--text-primary)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', cursor: 'pointer' }}>
+                    {activeEmail.isImportant ? '⬧ Important' : '⬦ Important'}
+                  </button>
+                  <button onClick={() => handleSpamEmail(activeEmail)} className="thread-action-btn" style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', cursor: 'pointer' }}>
+                    🚫 Spam
+                  </button>
+                  <button onClick={() => handleArchiveEmail(activeEmail)} className="thread-action-btn" style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', cursor: 'pointer' }}>
+                    📦 Archive
+                  </button>
+                  <button
                     onClick={async () => {
                       try {
-                        await fetch("/api/gmail/trash", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ messages: [{ id: activeEmail.id, accountId: activeEmail.accountId }] })
-                        });
+                        await fetch("/api/gmail/trash", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: [{ id: activeEmail.id, accountId: activeEmail.accountId }] }) });
                         showToast("Thread deleted");
                         setActiveEmail(null);
                         fetchInbox();
-                      } catch (e) {
-                        showToast("Error deleting thread");
-                      }
+                      } catch (e) { showToast("Error deleting thread"); }
                     }}
                     className="thread-action-btn"
                     style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', cursor: 'pointer' }}
@@ -1040,32 +1095,27 @@ export default function InboxPage() {
                   {msg.attachments && msg.attachments.length > 0 && (
                     <div style={{ padding: '16px', borderTop: '1px solid var(--glass-border)' }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                        {msg.attachments.map((att, i) => (
-                          <a 
-                            key={i}
-                            href={`/api/gmail/attachment?messageId=${msg.id}&accountId=${msg.accountId}&id=${att.attachmentId}&filename=${encodeURIComponent(att.filename)}&mimeType=${encodeURIComponent(att.mimeType)}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              padding: '10px 16px',
-                              background: 'var(--glass-bg)',
-                              border: '1px solid var(--glass-border)',
-                              borderRadius: '8px',
-                              textDecoration: 'none',
-                              color: 'var(--text-primary)',
-                              fontSize: '0.9rem',
-                              transition: 'all 0.2s'
-                            }}
-                          >
-                            <span>📎</span>
-                            <span style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {att.filename}
-                            </span>
-                          </a>
-                        ))}
+                        {msg.attachments.map((att, i) => {
+                          const url = `/api/gmail/attachment?messageId=${msg.id}&accountId=${msg.accountId}&id=${att.attachmentId}&filename=${encodeURIComponent(att.filename)}&mimeType=${encodeURIComponent(att.mimeType)}`;
+                          const isImage = att.mimeType?.startsWith('image/');
+                          const isPdf = att.mimeType === 'application/pdf';
+                          return (
+                            <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              {isImage && (
+                                <a href={url} target="_blank" rel="noreferrer">
+                                  <img src={url} alt={att.filename} style={{ maxWidth: '220px', maxHeight: '160px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'block' }} />
+                                </a>
+                              )}
+                              <a href={url} target="_blank" rel="noreferrer"
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px', textDecoration: 'none', color: 'var(--text-primary)', fontSize: '0.88rem' }}
+                              >
+                                <span>{isImage ? '🖼️' : isPdf ? '📄' : '📎'}</span>
+                                <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.filename}</span>
+                                {isPdf && <span style={{ fontSize: '0.75rem', color: 'var(--accent)', marginLeft: 'auto' }}>Preview ↗</span>}
+                              </a>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

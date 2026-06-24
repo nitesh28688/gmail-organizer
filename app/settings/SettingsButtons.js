@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Underline from "@tiptap/extension-underline";
 
 const PRESETS = [
   {
@@ -136,8 +139,19 @@ export default function SettingsButtons() {
   };
 
   // Signature
-  const [signature, setSignature] = useState("");
   const [signatureStatus, setSignatureStatus] = useState("Save");
+  const signatureEditor = useEditor({
+    extensions: [StarterKit, Underline],
+    editorProps: { attributes: { class: 'lm-editor', style: 'min-height:100px;' } },
+  });
+  useEffect(() => {
+    fetch("/api/user/signature").then(r => r.json()).then(d => {
+      if (d.signature && signatureEditor) {
+        const isHTML = /<[a-z][\s\S]*>/i.test(d.signature);
+        signatureEditor.commands.setContent(isHTML ? d.signature : d.signature.replace(/\n/g, '<br>'), false);
+      }
+    }).catch(console.error);
+  }, [signatureEditor]);
 
   // Alias
   const [aliasName, setAliasName] = useState("");
@@ -146,9 +160,6 @@ export default function SettingsButtons() {
 
   useEffect(() => {
     fetchRules();
-    fetch("/api/user/signature").then(r => r.json()).then(d => {
-      if (d.signature) setSignature(d.signature);
-    }).catch(console.error);
   }, []);
 
   const fetchRules = async () => {
@@ -269,6 +280,7 @@ export default function SettingsButtons() {
     e.preventDefault();
     setSignatureStatus("Saving…");
     try {
+      const signature = signatureEditor?.getHTML() || '';
       await fetch("/api/user/signature", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ signature })
@@ -510,12 +522,18 @@ export default function SettingsButtons() {
         <h3 style={{ fontSize: '1.4rem', marginBottom: '6px' }}>Email Signature</h3>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.95rem' }}>Appended to every email sent from Linear Mail.</p>
         <form onSubmit={handleSaveSignature} style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '480px' }}>
-          <textarea
-            value={signature}
-            onChange={e => setSignature(e.target.value)}
-            placeholder={"Best regards,\nYour Name"}
-            style={{ ...inputStyle, minHeight: '120px', resize: 'vertical', fontFamily: 'inherit' }}
-          />
+          <div style={{ border: '1px solid var(--glass-border)', borderRadius: '8px', overflow: 'hidden', background: 'var(--bg-surface)' }}>
+            <div style={{ display: 'flex', gap: '4px', padding: '6px 10px', borderBottom: '1px solid var(--glass-border)', background: 'var(--glass-bg)' }}>
+              {[['bold','B'],['italic','I'],['underline','U']].map(([cmd, label]) => (
+                <button key={cmd} type="button"
+                  onMouseDown={e => { e.preventDefault(); signatureEditor?.chain().focus()[`toggle${cmd.charAt(0).toUpperCase()+cmd.slice(1)}`]().run(); }}
+                  style={{ background: signatureEditor?.isActive(cmd) ? 'var(--accent)' : 'transparent', color: signatureEditor?.isActive(cmd) ? '#fff' : 'var(--text-primary)', border: '1px solid var(--glass-border)', borderRadius: '4px', padding: '2px 9px', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <EditorContent editor={signatureEditor} />
+          </div>
           <button type="submit" className="btn-primary" style={{ alignSelf: 'flex-start', padding: '8px 24px' }}>
             {signatureStatus}
           </button>
