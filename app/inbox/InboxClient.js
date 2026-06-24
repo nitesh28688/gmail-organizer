@@ -61,6 +61,8 @@ export default function InboxPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const lastPushAtRef = useRef(null);
+
   useEffect(() => {
     const intervalId = setInterval(() => {
       fetch("/api/cron").catch(() => {});
@@ -68,12 +70,28 @@ export default function InboxPage() {
     return () => clearInterval(intervalId);
   }, []);
 
-  // Auto-refresh inbox every 60s when idle (no email open, no compose)
+  // Ping for new emails every 5s via Pub/Sub webhook state
   useEffect(() => {
-    const refreshId = setInterval(() => {
-      if (!activeEmail && !composeOpen) fetchInbox();
-    }, 60000);
-    return () => clearInterval(refreshId);
+    const pingId = setInterval(async () => {
+      if (activeEmail || composeOpen) return;
+      
+      try {
+        const res = await fetch("/api/gmail/ping");
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        if (data.lastPushAt) {
+          if (lastPushAtRef.current && data.lastPushAt !== lastPushAtRef.current) {
+            // New push notification arrived!
+            fetchInbox();
+          }
+          lastPushAtRef.current = data.lastPushAt;
+        }
+      } catch (e) {
+        // Ignore network errors quietly
+      }
+    }, 5000);
+    return () => clearInterval(pingId);
   }, [activeEmail, composeOpen]);
 
   const handleComposeClose = async (result) => {
@@ -208,6 +226,12 @@ export default function InboxPage() {
       
       if (email.isUnread) {
         setEmails(prev => prev.map(m => m.id === email.id ? { ...m, isUnread: false } : m));
+        fetch("/api/gmail/markRead", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: [{ id: email.id, accountId: email.accountId }] })
+        }).then(() => window.dispatchEvent(new Event("refreshCounts")))
+          .catch(e => console.error("markRead failed", e));
       }
     } catch (e) {
       console.error(e);

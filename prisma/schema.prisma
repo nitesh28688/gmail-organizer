@@ -22,6 +22,10 @@ model Account {
   id_token                 String?
   session_state            String?
   refresh_token_expires_in Int?
+  gmailAddress     String?
+  gmailHistoryId   String?
+  gmailWatchExpiry DateTime?
+  gmailPushAt      DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
