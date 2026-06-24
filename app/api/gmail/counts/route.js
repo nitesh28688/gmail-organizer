@@ -48,17 +48,21 @@ export async function POST(request) {
           results[space.name] = 0;
         }
       } else if (space.labelId) {
-        // Organizer/* label — query-based so trash is excluded correctly
+        // Organizer/* label — exact up to 500, estimate beyond
         try {
           const res = await gmail.users.messages.list({
             userId: "me",
             labelIds: [space.labelId],
             q: "is:unread -in:trash",
-            maxResults: 1
+            maxResults: 500
           });
-          results[space.name] = res.data.messages
-            ? (res.data.nextPageToken ? res.data.resultSizeEstimate : res.data.messages.length)
-            : 0;
+          if (!res.data.messages) {
+            results[space.name] = 0;
+          } else if (res.data.nextPageToken) {
+            results[space.name] = res.data.resultSizeEstimate || "500+";
+          } else {
+            results[space.name] = res.data.messages.length;
+          }
         } catch {
           results[space.name] = 0;
         }
