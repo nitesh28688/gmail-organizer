@@ -8,11 +8,13 @@ const LABEL_ID = {
   "Inbox":   "INBOX",
   "Starred": "STARRED",
   "Drafts":  "DRAFT",
-  "Sent":    "SENT",
   "Spam":    "SPAM",
   "Trash":   "TRASH",
   "All Mail": "UNREAD", // use global unread count for All Mail
 };
+
+// These folders don't need unread badges — suppress them
+const NO_BADGE = new Set(["Sent"]);
 
 export async function POST(request) {
   const session = await getServerSession(authOptions);
@@ -35,6 +37,11 @@ export async function POST(request) {
     }
 
     await Promise.all(allSpaces.map(async (space) => {
+      if (NO_BADGE.has(space.name)) {
+        results[space.name] = 0;
+        return;
+      }
+
       const labelId = LABEL_ID[space.name];
 
       if (labelId) {
@@ -59,7 +66,7 @@ export async function POST(request) {
           if (!res.data.messages) {
             results[space.name] = 0;
           } else if (res.data.nextPageToken) {
-            results[space.name] = res.data.resultSizeEstimate || "500+";
+            results[space.name] = "500+";
           } else {
             results[space.name] = res.data.messages.length;
           }
@@ -75,7 +82,7 @@ export async function POST(request) {
             results[space.name] = 0;
           } else if (res.data.nextPageToken) {
             // More than 500 — use Gmail's estimate
-            results[space.name] = res.data.resultSizeEstimate || "500+";
+            results[space.name] = "500+";
           } else {
             results[space.name] = res.data.messages.length;
           }
