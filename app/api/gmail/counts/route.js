@@ -48,10 +48,10 @@ export async function POST(request) {
           results[space.name] = 0;
         }
       } else if (space.labelId) {
-        // Organizer/* label — exact total from Gmail label API
+        // Organizer/* label — show unread count, consistent with other spaces
         try {
           const res = await gmail.users.labels.get({ userId: "me", id: space.labelId });
-          results[space.name] = res.data.messagesTotal || 0;
+          results[space.name] = res.data.messagesUnread || 0;
         } catch {
           results[space.name] = 0;
         }
