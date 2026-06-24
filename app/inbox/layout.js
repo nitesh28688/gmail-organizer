@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import SidebarClient from "./SidebarClient";
 
 export const metadata = {
-  title: "Inbox - Gmail Organizer",
+  title: "Linear Mail",
 };
 
 export default async function InboxLayout({ children }) {
