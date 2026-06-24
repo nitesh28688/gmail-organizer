@@ -288,7 +288,12 @@ export default function InboxPage() {
     else if (space === "Categories") baseQuery = "in:inbox"; // fallback, shouldn't be clicked
     else baseQuery = `label:"Organizer/${space}" -in:trash`;
     let q = baseQuery;
-    if (searchQuery) q += ` ${searchQuery}`;
+    if (searchQuery) {
+      // Wrap multi-word search in quotes for exact phrase, single word as-is for substring match
+      const trimmed = searchQuery.trim();
+      const needsQuotes = trimmed.includes(" ");
+      q += needsQuotes ? ` "${trimmed}"` : ` ${trimmed}`;
+    }
     if (filterTo) q += ` to:${filterTo}`;
     if (filterFrom) q += ` from:${filterFrom}`;
     if (filterSubject) q += ` subject:${filterSubject}`;
@@ -315,7 +320,9 @@ export default function InboxPage() {
       const finalQuery = buildQuery();
       const res = await fetch(`/api/gmail/messages?q=${encodeURIComponent(finalQuery)}&accountId=${activeAccountId}`);
       const data = await res.json();
-      setEmails(data.emails || []);
+      let results = data.emails || [];
+      if (searchQuery) results = filterByFuzzySearch(results, searchQuery);
+      setEmails(results);
       setNextPageToken(data.nextPageToken || null);
       if (isBasicQuery && typeof window !== 'undefined') {
         window.emailCache = window.emailCache || {};
@@ -336,7 +343,9 @@ export default function InboxPage() {
       const res = await fetch(`/api/gmail/messages?q=${encodeURIComponent(finalQuery)}&accountId=${activeAccountId}&pageToken=${nextPageToken}`);
       const data = await res.json();
       setEmails(prev => {
-        const combined = [...prev, ...(data.emails || [])];
+        let newEmails = data.emails || [];
+        if (searchQuery) newEmails = filterByFuzzySearch(newEmails, searchQuery);
+        const combined = [...prev, ...newEmails];
         combined.sort((a, b) => b.internalDate - a.internalDate);
         return combined;
       });
@@ -391,8 +400,42 @@ export default function InboxPage() {
     fetchInbox();
   }, [filterUnread]);
 
+  // Fuzzy search: score how well an email matches a query
+  const fuzzyScore = (text, query) => {
+    if (!text || !query) return text ? 0 : -1;
+    text = text.toLowerCase();
+    query = query.toLowerCase();
+
+    if (text.includes(query)) return 100; // Exact substring match
+
+    let score = 0;
+    let queryIdx = 0;
+    for (let i = 0; i < text.length && queryIdx < query.length; i++) {
+      if (text[i] === query[queryIdx]) {
+        score += 10;
+        queryIdx++;
+      }
+    }
+    return queryIdx === query.length ? score : -1;
+  };
+
+  const filterByFuzzySearch = (emailsList, query) => {
+    if (!query.trim()) return emailsList;
+
+    const tokens = query.toLowerCase().split(/\s+/);
+    return emailsList.filter(email => {
+      const text = `${email.subject} ${email.from} ${email.to} ${email.preview}`.toLowerCase();
+      return tokens.every(token => text.includes(token));
+    }).sort((a, b) => {
+      const scoreA = tokens.reduce((sum, token) => sum + fuzzyScore(`${a.subject} ${a.from}`, token), 0);
+      const scoreB = tokens.reduce((sum, token) => sum + fuzzyScore(`${b.subject} ${b.from}`, token), 0);
+      return scoreB - scoreA;
+    });
+  };
+
   const handleSearch = (e) => {
     e.preventDefault();
+    setNextPageToken(null);
     fetchInbox();
   };
 
