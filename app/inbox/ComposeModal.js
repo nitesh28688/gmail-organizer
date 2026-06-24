@@ -34,6 +34,7 @@ export default function ComposeModal({
   const [showSchedule, setShowSchedule] = useState(false);
   const [scheduleTime, setScheduleTime] = useState("");
   const [aliases, setAliases] = useState([]);
+  const [expanded, setExpanded] = useState(false);
 
   const toDropdownRef = useRef(null);
   const ccDropdownRef = useRef(null);
@@ -192,6 +193,12 @@ export default function ComposeModal({
     <div className="pop-in" style={isInline ? {
       width: "100%", height: "100%", display: "flex", flexDirection: "column",
       background: "transparent", padding: "32px"
+    } : expanded ? {
+      position: "fixed", top: "5vh", left: "50%", transform: "translateX(-50%)",
+      width: "min(860px, 96vw)", height: "90vh",
+      background: "var(--bg-surface)", border: "1px solid var(--glass-border)",
+      borderRadius: "16px", boxShadow: "0 32px 64px rgba(0,0,0,0.6)",
+      display: "flex", flexDirection: "column", zIndex: 1000, overflow: "hidden"
     } : {
       position: "fixed", bottom: "24px", right: "24px",
       width: "500px", minHeight: "480px",
@@ -202,14 +209,24 @@ export default function ComposeModal({
 
       <header style={{ padding: "16px", borderBottom: "1px solid var(--glass-border)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--glass-bg)" }}>
         <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 600 }}>{draftId ? "Resume Draft" : "New Message"}</h3>
-        <button onClick={() => onClose(false)} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", fontSize: "1.2rem" }}>×</button>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <button
+            type="button"
+            onClick={() => setExpanded(e => !e)}
+            title={expanded ? "Collapse" : "Expand"}
+            style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", fontSize: "1rem", padding: "2px 6px", lineHeight: 1 }}
+          >
+            {expanded ? "⊡" : "⊞"}
+          </button>
+          <button onClick={() => onClose(false)} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", fontSize: "1.2rem" }}>×</button>
+        </div>
       </header>
 
       <form onSubmit={handleSend} style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
 
         {/* From */}
-        <div style={{ display: "flex", borderBottom: "1px solid var(--glass-border)", padding: "12px 16px" }}>
-          <label style={{ width: "60px", color: "var(--text-secondary)" }}>From:</label>
+        <div style={{ display: "flex", borderBottom: "1px solid var(--glass-border)", padding: "6px 16px" }}>
+          <label style={{ width: "60px", color: "var(--text-secondary)", lineHeight: "28px" }}>From:</label>
           <select value={from} onChange={e => setFrom(e.target.value)} style={{ flex: 1, background: "var(--glass-bg)", border: "1px solid var(--glass-border)", color: "var(--text-primary)", padding: "4px 8px", borderRadius: "4px", outline: "none" }}>
             <option value={userEmail}>{userEmail}</option>
             {aliases.map(a => (
@@ -226,7 +243,7 @@ export default function ComposeModal({
           { label: "Cc:", val: cc, set: setCc, ref: ccDropdownRef, id: "cc" },
           { label: "Bcc:", val: bcc, set: setBcc, ref: bccDropdownRef, id: "bcc" },
         ].map(({ label, val, set, ref, id }) => (
-          <div key={id} style={{ position: "relative", display: "flex", borderBottom: "1px solid var(--glass-border)", padding: "12px 16px" }}>
+          <div key={id} style={{ position: "relative", display: "flex", borderBottom: "1px solid var(--glass-border)", padding: "6px 16px", alignItems: "center" }}>
             <label style={{ width: "60px", color: "var(--text-secondary)" }}>{label}</label>
             <input
               type="text" value={val} onChange={e => set(e.target.value)}
@@ -248,7 +265,7 @@ export default function ComposeModal({
         ))}
 
         {/* Subject */}
-        <div style={{ display: "flex", borderBottom: "1px solid var(--glass-border)", padding: "12px 16px" }}>
+        <div style={{ display: "flex", borderBottom: "1px solid var(--glass-border)", padding: "6px 16px", alignItems: "center" }}>
           <label style={{ width: "60px", color: "var(--text-secondary)" }}>Subject:</label>
           <input type="text" value={subject} onChange={e => setSubject(e.target.value)}
             style={{ flex: 1, background: "var(--glass-bg)", border: "1px solid var(--glass-border)", color: "var(--text-primary)", padding: "4px 8px", borderRadius: "4px", outline: "none" }} />
