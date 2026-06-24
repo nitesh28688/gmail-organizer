@@ -348,7 +348,19 @@ export default function InboxPage() {
     }).catch(e => console.error(e));
 
     fetch("/api/gmail/accounts").then(r => r.json()).then(d => {
-      if (d.accounts) setAccounts(d.accounts);
+      if (d.accounts) {
+        setAccounts(d.accounts);
+        // Set up Gmail push watch for each account
+        if (process.env.NEXT_PUBLIC_PUBSUB_ENABLED !== 'false') {
+          d.accounts.forEach(acc => {
+            fetch("/api/gmail/watch", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ accountId: acc.id })
+            }).catch(() => {});
+          });
+        }
+      }
     }).catch(e => console.error(e));
   }, [space, activeAccountId]);
 
