@@ -624,7 +624,7 @@ export default function InboxPage() {
 
   const handleDeleteAll = async () => {
     if (!activeLabelId) return;
-    if (!window.confirm(`Permanently delete ALL emails in "${space}"? This cannot be undone.`)) return;
+    if (!window.confirm(`Move ALL emails in "${space}" to Trash? You can recover them from Trash within 30 days.`)) return;
     setDeletingAll(true);
     try {
       await fetch("/api/gmail/deleteByLabel", {
@@ -765,7 +765,7 @@ export default function InboxPage() {
               </button>
             )}
             <button onClick={handleDeleteAll} disabled={deletingAll} style={{ background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', padding: '5px 14px', borderRadius: '16px', fontSize: '0.82rem', cursor: 'pointer', opacity: deletingAll ? 0.6 : 1, marginLeft: 'auto' }}>
-              {deletingAll ? 'Deleting…' : `🗑️ Delete all in ${space}`}
+              {deletingAll ? 'Moving to Trash…' : `🗑️ Trash all in ${space}`}
             </button>
           </div>
         )}

@@ -25,9 +25,13 @@ export async function POST(request) {
 
       const messages = res.data.messages || [];
       if (messages.length > 0) {
-        await gmail.users.messages.batchDelete({
+        await gmail.users.messages.batchModify({
           userId: "me",
-          requestBody: { ids: messages.map(m => m.id) }
+          requestBody: {
+            ids: messages.map(m => m.id),
+            addLabelIds: ["TRASH"],
+            removeLabelIds: ["INBOX"]
+          }
         });
         deleted += messages.length;
       }
