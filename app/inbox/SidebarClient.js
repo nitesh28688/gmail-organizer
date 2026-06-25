@@ -16,7 +16,8 @@ export default function SidebarClient({ userEmail }) {
 
   const [accounts, setAccounts] = useState([]);
   const [spaces, setSpaces] = useState([]);
-  
+  const [contacts, setContacts] = useState([]);
+
   const [isComposing, setIsComposing] = useState(false);
   const [expanded, setExpanded] = useState({ "Linear Ventures": false, "Nanoliss": false, "Categories": true });
   const [counts, setCounts] = useState({});
@@ -60,17 +61,21 @@ export default function SidebarClient({ userEmail }) {
     fetchAccounts();
   }, [activeAccountId, router]);
 
-  // Fetch spaces when account changes
+  // Fetch spaces and contacts when account changes
   useEffect(() => {
     if (!activeAccountId) return;
     const fetchSpaces = async () => {
       const res = await fetch(`/api/gmail/spaces?accountId=${activeAccountId}`);
       const data = await res.json();
-      if (data.spaces) {
-        setSpaces(data.spaces);
-      }
+      if (data.spaces) setSpaces(data.spaces);
+    };
+    const fetchContacts = async () => {
+      const res = await fetch("/api/gmail/contacts");
+      const data = await res.json();
+      if (data.contacts) setContacts(data.contacts);
     };
     fetchSpaces();
+    fetchContacts();
   }, [activeAccountId]);
 
   const fetchCounts = useCallback(async () => {
@@ -348,7 +353,7 @@ export default function SidebarClient({ userEmail }) {
       </aside>
 
       {isComposing && (
-        <ComposeModal onClose={() => setIsComposing(false)} userEmail={accounts.find(a => a.id === activeAccountId)?.email || userEmail} initialAccountId={activeAccountId} />
+        <ComposeModal onClose={() => setIsComposing(false)} userEmail={accounts.find(a => a.id === activeAccountId)?.email || userEmail} initialAccountId={activeAccountId} contacts={contacts} />
       )}
     </>
   );

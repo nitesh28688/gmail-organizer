@@ -51,7 +51,7 @@ export default function ComposeModal({
   const [showSchedule, setShowSchedule] = useState(false);
   const [scheduleTime, setScheduleTime] = useState("");
   const [aliases, setAliases] = useState([]);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
   const toDropdownRef = useRef(null);
   const ccDropdownRef = useRef(null);
