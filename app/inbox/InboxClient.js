@@ -374,7 +374,7 @@ export default function InboxPage() {
       fetchInbox();
     }, 0);
     
-    fetch("/api/gmail/contacts").then(r => r.json()).then(d => {
+    fetch(`/api/gmail/contacts?accountId=${activeAccountId}`).then(r => r.json()).then(d => {
       if (d.contacts) setApiContacts(d.contacts);
     }).catch(e => console.error(e));
 

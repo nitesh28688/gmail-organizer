@@ -194,7 +194,7 @@ export default function ComposeModal({
       width: "100%", height: "100%", display: "flex", flexDirection: "column",
       background: "transparent", padding: "32px"
     } : expanded ? {
-      position: "fixed", top: "4vh", left: "50%", transform: "translateX(-50%)",
+      position: "fixed", top: "4vh", left: 0, right: 0, margin: "0 auto",
       width: "min(860px, calc(100vw - 48px))", height: "92vh",
       background: "var(--bg-surface)", border: "1px solid var(--glass-border)",
       borderRadius: "16px", boxShadow: "0 32px 64px rgba(0,0,0,0.6)",

@@ -70,7 +70,7 @@ export default function SidebarClient({ userEmail }) {
       if (data.spaces) setSpaces(data.spaces);
     };
     const fetchContacts = async () => {
-      const res = await fetch("/api/gmail/contacts");
+      const res = await fetch(`/api/gmail/contacts?accountId=${activeAccountId}`);
       const data = await res.json();
       if (data.contacts) setContacts(data.contacts);
     };
