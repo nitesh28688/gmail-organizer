@@ -158,11 +158,7 @@ export default function SettingsButtons() {
   const [aliasEmail, setAliasEmail] = useState("");
   const [aliasStatus, setAliasStatus] = useState("Add Alias");
 
-  useEffect(() => {
-    fetchRules();
-  }, []);
-
-  const fetchRules = async () => {
+  async function fetchRules() {
     setLoadingRules(true);
     try {
       const res = await fetch("/api/gmail/rules");
@@ -170,7 +166,12 @@ export default function SettingsButtons() {
       setRules(data.rules || []);
     } catch (e) { console.error(e); }
     finally { setLoadingRules(false); }
-  };
+  }
+
+  useEffect(() => {
+    const timerId = setTimeout(() => { fetchRules(); }, 0);
+    return () => clearTimeout(timerId);
+  }, []);
 
   const isPresetActive = (preset) =>
     rules.some(r => r.labelName === preset.labelName && r.enabled);

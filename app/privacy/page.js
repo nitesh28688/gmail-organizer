@@ -46,7 +46,7 @@ export default function PrivacyPage() {
 
       <section style={{ marginBottom: '32px' }}>
         <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '12px' }}>Data retention and deletion</h2>
-        <p>You can disconnect your account at any time by clicking Sign Out and then revoking Linear Mail's access from your <a href="https://myaccount.google.com/permissions" style={{ color: '#4f46e5' }}>Google account permissions page</a>. This removes all stored OAuth tokens. Any tracking metadata associated with your account is deleted on request — email us to request deletion.</p>
+        <p>You can disconnect your account at any time by clicking Sign Out and then revoking Linear Mail&apos;s access from your <a href="https://myaccount.google.com/permissions" style={{ color: '#4f46e5' }}>Google account permissions page</a>. This removes all stored OAuth tokens. Any tracking metadata associated with your account is deleted on request — email us to request deletion.</p>
       </section>
 
       <section style={{ marginBottom: '32px' }}>
@@ -56,7 +56,7 @@ export default function PrivacyPage() {
 
       <section style={{ marginBottom: '32px' }}>
         <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '12px' }}>Google API Limited Use disclosure</h2>
-        <p>Linear Mail's use of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" style={{ color: '#4f46e5' }}>Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+        <p>Linear Mail&apos;s use of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" style={{ color: '#4f46e5' }}>Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
       </section>
 
       <section style={{ marginBottom: '32px' }}>
@@ -68,3 +68,4 @@ export default function PrivacyPage() {
     </div>
   );
 }
+

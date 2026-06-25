@@ -1,10 +1,27 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
+
+const ToolbarBtn = ({ onClick, active, title, children }) => (
+  <button
+    type="button"
+    title={title}
+    onMouseDown={(e) => { e.preventDefault(); onClick(); }}
+    style={{
+      background: active ? "var(--accent)" : "transparent",
+      color: active ? "#fff" : "var(--text-primary)",
+      border: "1px solid var(--glass-border)",
+      borderRadius: "4px", padding: "2px 10px",
+      cursor: "pointer", fontSize: "0.9rem", fontWeight: 600,
+    }}
+  >
+    {children}
+  </button>
+);
 
 export default function ComposeModal({
   onClose,
@@ -62,11 +79,11 @@ export default function ComposeModal({
     if (!editor || !initialBody) return;
     const isHTML = /<[a-z][\s\S]*>/i.test(initialBody);
     editor.commands.setContent(isHTML ? initialBody : initialBody.replace(/\n/g, "<br>"), false);
-  }, [editor]);
+  }, [editor, initialBody]);
 
-  const getBodyHTML = () => editor?.getHTML() ?? "";
+  const getBodyHTML = useCallback(() => editor?.getHTML() ?? "", [editor]);
 
-  const triggerAutoSave = () => {
+  const triggerAutoSave = useCallback(() => {
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(async () => {
       const html = getBodyHTML();
@@ -86,12 +103,12 @@ export default function ComposeModal({
         }
       } catch { setSaveStatus("Save failed"); }
     }, 2000);
-  };
+  }, [attachments, bcc, cc, draftId, from, getBodyHTML, initialAccountId, subject, to]);
 
   useEffect(() => {
     triggerAutoSave();
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [to, cc, bcc, subject, from, attachments]);
+  }, [triggerAutoSave]);
 
   useEffect(() => {
     if (!initialAccountId) return;
@@ -163,23 +180,6 @@ export default function ComposeModal({
       setAiLoading(false);
     }
   };
-
-  const ToolbarBtn = ({ onClick, active, title, children }) => (
-    <button
-      type="button"
-      title={title}
-      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
-      style={{
-        background: active ? "var(--accent)" : "transparent",
-        color: active ? "#fff" : "var(--text-primary)",
-        border: "1px solid var(--glass-border)",
-        borderRadius: "4px", padding: "2px 10px",
-        cursor: "pointer", fontSize: "0.9rem", fontWeight: 600,
-      }}
-    >
-      {children}
-    </button>
-  );
 
   const setLink = () => {
     const prev = editor?.getAttributes("link").href || "";

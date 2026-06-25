@@ -2,6 +2,22 @@ import NextAuth from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "../../../../lib/prisma"
+function ensureAuthUrl() {
+  if (process.env.NEXTAUTH_URL?.startsWith("http://") || process.env.NEXTAUTH_URL?.startsWith("https://")) {
+    return;
+  }
+
+  if (process.env.VERCEL_URL) {
+    process.env.NEXTAUTH_URL = process.env.VERCEL_URL.startsWith("http")
+      ? process.env.VERCEL_URL
+      : `https://${process.env.VERCEL_URL}`;
+    return;
+  }
+
+  process.env.NEXTAUTH_URL = "http://localhost:3000";
+}
+
+ensureAuthUrl();
 
 export const authOptions = {
   adapter: PrismaAdapter(prisma),

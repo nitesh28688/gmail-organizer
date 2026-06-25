@@ -7,6 +7,8 @@ import AIAssistant from "./AIAssistant";
 import CmdKPalette from "./CmdKPalette";
 import OnboardingModal from "./OnboardingModal";
 
+const emailCache = new Map();
+
 export default function InboxPage() {
   const searchParams = useSearchParams();
   const space = searchParams.get("space") || "Inbox";
@@ -302,11 +304,11 @@ export default function InboxPage() {
     return q.trim();
   };
 
-  const fetchInbox = async () => {
+  async function fetchInbox() {
     const isBasicQuery = !searchQuery && !filterTo && !filterFrom && !filterSubject && !filterAttachment;
     const cacheKey = `${space}_${activeAccountId}`;
-    if (isBasicQuery && typeof window !== 'undefined' && window.emailCache && window.emailCache[cacheKey]) {
-      setEmails(window.emailCache[cacheKey]);
+    if (isBasicQuery && emailCache.has(cacheKey)) {
+      setEmails(emailCache.get(cacheKey));
       setLoading(false);
     } else {
       setLoading(true);
@@ -324,16 +326,15 @@ export default function InboxPage() {
       if (searchQuery) results = filterByFuzzySearch(results, searchQuery);
       setEmails(results);
       setNextPageToken(data.nextPageToken || null);
-      if (isBasicQuery && typeof window !== 'undefined') {
-        window.emailCache = window.emailCache || {};
-        window.emailCache[cacheKey] = data.emails || [];
+      if (isBasicQuery) {
+        emailCache.set(cacheKey, data.emails || []);
       }
     } catch (e) {
       console.error("Failed to load emails", e);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const fetchMore = async () => {
     if (!nextPageToken || loadingMore) return;
@@ -358,21 +359,20 @@ export default function InboxPage() {
   };
 
   const invalidateCache = () => {
-    if (typeof window !== 'undefined' && window.emailCache) {
-      const cacheKey = `${space}_${activeAccountId}`;
-      delete window.emailCache[cacheKey];
-    }
+    emailCache.delete(`${space}_${activeAccountId}`);
   };
 
   // Re-fetch when space or account changes
   useEffect(() => {
-    setSearchQuery("");
-    setFilterTo("");
-    setFilterFrom("");
-    setFilterSubject("");
-    setFilterAttachment(false);
-    setFilterUnread(false);
-    fetchInbox();
+    setTimeout(() => {
+      setSearchQuery("");
+      setFilterTo("");
+      setFilterFrom("");
+      setFilterSubject("");
+      setFilterAttachment(false);
+      setFilterUnread(false);
+      fetchInbox();
+    }, 0);
     
     fetch("/api/gmail/contacts").then(r => r.json()).then(d => {
       if (d.contacts) setApiContacts(d.contacts);
@@ -618,7 +618,7 @@ export default function InboxPage() {
     }
   };
 
-  const handleArchiveEmail = async (email) => {
+  async function handleArchiveEmail(email) {
     try {
       await fetch("/api/gmail/archive", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -639,7 +639,7 @@ export default function InboxPage() {
       });
       window.dispatchEvent(new Event("refreshCounts"));
     } catch { showToast("Error archiving"); }
-  };
+  }
 
   const handleSpamEmail = async (email) => {
     try {

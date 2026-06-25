@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import ComposeModal from "./ComposeModal";
 import { signOut, signIn } from "next-auth/react";
 
@@ -23,19 +23,14 @@ export default function SidebarClient({ userEmail }) {
   const [isLoadingCounts, setIsLoadingCounts] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("theme") !== "light";
+  });
 
   useEffect(() => {
     const handleToggle = () => setMobileOpen(o => !o);
     window.addEventListener("toggleSidebar", handleToggle);
-    
-    // Initialize theme from local storage
-    if (typeof window !== "undefined") {
-      const savedTheme = localStorage.getItem("theme");
-      if (savedTheme === "light") {
-        setIsDarkMode(false);
-      }
-    }
     
     return () => window.removeEventListener("toggleSidebar", handleToggle);
   }, []);
@@ -78,7 +73,7 @@ export default function SidebarClient({ userEmail }) {
     fetchSpaces();
   }, [activeAccountId]);
 
-  const fetchCounts = async () => {
+  const fetchCounts = useCallback(async () => {
     if (!activeAccountId || spaces.length === 0) return;
     setIsLoadingCounts(true);
     try {
@@ -96,14 +91,17 @@ export default function SidebarClient({ userEmail }) {
     } finally {
       setIsLoadingCounts(false);
     }
-  };
+  }, [activeAccountId, spaces]);
 
   useEffect(() => {
-    fetchCounts();
+    const timerId = setTimeout(() => { fetchCounts(); }, 0);
     const handleRefresh = () => fetchCounts();
     window.addEventListener("refreshCounts", handleRefresh);
-    return () => window.removeEventListener("refreshCounts", handleRefresh);
-  }, [spaces, activeAccountId]);
+    return () => {
+      clearTimeout(timerId);
+      window.removeEventListener("refreshCounts", handleRefresh);
+    };
+  }, [fetchCounts]);
 
   const handleAccountChange = (e) => {
     router.push(`?account=${e.target.value}`);

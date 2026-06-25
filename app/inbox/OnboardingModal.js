@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const FEATURES = [
@@ -27,15 +27,12 @@ const FEATURES = [
 ];
 
 export default function OnboardingModal() {
-  const [show, setShow] = useState(false);
+  const [show, setShow] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !localStorage.getItem("lm_onboarded");
+  });
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const done = localStorage.getItem("lm_onboarded");
-    if (!done) setShow(true);
-  }, []);
 
   const dismiss = () => {
     localStorage.setItem("lm_onboarded", "1");
@@ -75,7 +72,7 @@ export default function OnboardingModal() {
           </h2>
           <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "0.95rem" }}>
             A smarter Gmail client for people who get too many emails.
-            Here's what makes it different:
+            Here&apos;s what makes it different:
           </p>
         </div>
 
@@ -117,7 +114,7 @@ export default function OnboardingModal() {
               cursor: "pointer", fontSize: "0.9rem"
             }}
           >
-            I'll explore on my own
+            I&apos;ll explore on my own
           </button>
         </div>
 
