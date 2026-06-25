@@ -194,14 +194,14 @@ export default function ComposeModal({
       width: "100%", height: "100%", display: "flex", flexDirection: "column",
       background: "transparent", padding: "32px"
     } : expanded ? {
-      position: "fixed", top: "5vh", left: "50%", transform: "translateX(-50%)",
-      width: "min(860px, 96vw)", height: "90vh",
+      position: "fixed", top: "4vh", left: "50%", transform: "translateX(-50%)",
+      width: "min(860px, calc(100vw - 48px))", height: "92vh",
       background: "var(--bg-surface)", border: "1px solid var(--glass-border)",
       borderRadius: "16px", boxShadow: "0 32px 64px rgba(0,0,0,0.6)",
       display: "flex", flexDirection: "column", zIndex: 1000, overflow: "hidden"
     } : {
       position: "fixed", bottom: "24px", right: "24px",
-      width: "500px", minHeight: "480px",
+      width: "min(540px, calc(100vw - 48px))", minHeight: "480px",
       background: "var(--bg-surface)", border: "1px solid var(--glass-border)",
       borderRadius: "16px", boxShadow: "0 24px 48px rgba(0,0,0,0.5)",
       display: "flex", flexDirection: "column", zIndex: 1000, overflow: "hidden"
