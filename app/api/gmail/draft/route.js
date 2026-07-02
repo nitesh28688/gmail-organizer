@@ -16,7 +16,7 @@ const encodeEmail = ({ to, cc, bcc, from, subject, body, attachments = [] }) => 
     str += `subject: ${subject}\n\n`;
     
     str += `--${boundary}\n`;
-    str += `Content-Type: text/plain; charset="UTF-8"\n`;
+    str += `Content-Type: text/html; charset="UTF-8"\n`;
     str += `Content-Transfer-Encoding: 7bit\n\n`;
     str += `${body}\n\n`;
     
@@ -30,7 +30,7 @@ const encodeEmail = ({ to, cc, bcc, from, subject, body, attachments = [] }) => 
     }
     str += `--${boundary}--\n`;
   } else {
-    str += `Content-Type: text/plain; charset="UTF-8"\n`;
+    str += `Content-Type: text/html; charset="UTF-8"\n`;
     str += `MIME-Version: 1.0\n`;
     str += `Content-Transfer-Encoding: 7bit\n`;
     str += `to: ${to}\n`;

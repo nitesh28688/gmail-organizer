@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
-import ComposeModal from "./ComposeModal";
 import { signOut, signIn } from "next-auth/react";
 
 export default function SidebarClient({ userEmail }) {
@@ -18,7 +17,6 @@ export default function SidebarClient({ userEmail }) {
   const [spaces, setSpaces] = useState([]);
   const [contacts, setContacts] = useState([]);
 
-  const [isComposing, setIsComposing] = useState(false);
   const [expanded, setExpanded] = useState({ "Linear Ventures": false, "Nanoliss": false, "Categories": true });
   const [counts, setCounts] = useState({});
   const [isLoadingCounts, setIsLoadingCounts] = useState(true);
@@ -275,7 +273,7 @@ export default function SidebarClient({ userEmail }) {
 
         <button 
           className="btn-primary" 
-          onClick={() => setIsComposing(true)}
+          onClick={() => window.dispatchEvent(new Event("openCompose"))}
           style={{ width: '100%', padding: '12px', fontSize: '1rem' }}
         >
           + Compose
@@ -351,10 +349,6 @@ export default function SidebarClient({ userEmail }) {
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
       `}</style>
       </aside>
-
-      {isComposing && (
-        <ComposeModal onClose={() => setIsComposing(false)} userEmail={accounts.find(a => a.id === activeAccountId)?.email || userEmail} initialAccountId={activeAccountId} contacts={contacts} />
-      )}
     </>
   );
 }

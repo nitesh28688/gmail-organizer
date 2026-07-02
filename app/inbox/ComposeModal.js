@@ -105,10 +105,10 @@ export default function ComposeModal({
     }, 2000);
   }, [attachments, bcc, cc, draftId, from, getBodyHTML, initialAccountId, subject, to]);
 
+  // Clean up auto-save timer on unmount
   useEffect(() => {
-    triggerAutoSave();
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [triggerAutoSave]);
+  }, []);
 
   useEffect(() => {
     if (!initialAccountId) return;
@@ -227,9 +227,9 @@ export default function ComposeModal({
         {/* From */}
         <div style={{ display: "flex", borderBottom: "1px solid var(--glass-border)", padding: "6px 16px" }}>
           <label style={{ width: "60px", color: "var(--text-secondary)", lineHeight: "28px" }}>From:</label>
-          <select value={from} onChange={e => setFrom(e.target.value)} style={{ flex: 1, background: "var(--glass-bg)", border: "1px solid var(--glass-border)", color: "var(--text-primary)", padding: "4px 8px", borderRadius: "4px", outline: "none" }}>
+          <select value={from} onChange={e => { setFrom(e.target.value); triggerAutoSave(); }} style={{ flex: 1, background: "var(--glass-bg)", border: "1px solid var(--glass-border)", color: "var(--text-primary)", padding: "4px 8px", borderRadius: "4px", outline: "none" }}>
             <option value={userEmail}>{userEmail}</option>
-            {aliases.map(a => (
+            {aliases.filter(a => a.sendAsEmail.toLowerCase() !== userEmail.toLowerCase()).map(a => (
               <option key={a.sendAsEmail} value={`"${a.displayName || "Alias"}" <${a.sendAsEmail}>`}>
                 {a.displayName ? `${a.displayName} (${a.sendAsEmail})` : a.sendAsEmail}
               </option>
@@ -246,7 +246,7 @@ export default function ComposeModal({
           <div key={id} style={{ position: "relative", display: "flex", borderBottom: "1px solid var(--glass-border)", padding: "6px 16px", alignItems: "center" }}>
             <label style={{ width: "60px", color: "var(--text-secondary)" }}>{label}</label>
             <input
-              type="text" value={val} onChange={e => set(e.target.value)}
+              type="text" value={val} onChange={e => { set(e.target.value); triggerAutoSave(); }}
               onFocus={() => { if (ref.current) ref.current.style.display = "block"; }}
               onBlur={() => setTimeout(() => { if (ref.current) ref.current.style.display = "none"; }, 200)}
               style={{ flex: 1, background: "var(--glass-bg)", border: "1px solid var(--glass-border)", color: "var(--text-primary)", padding: "4px 8px", borderRadius: "4px", outline: "none" }}
@@ -267,7 +267,7 @@ export default function ComposeModal({
         {/* Subject */}
         <div style={{ display: "flex", borderBottom: "1px solid var(--glass-border)", padding: "6px 16px", alignItems: "center" }}>
           <label style={{ width: "60px", color: "var(--text-secondary)" }}>Subject:</label>
-          <input type="text" value={subject} onChange={e => setSubject(e.target.value)}
+          <input type="text" value={subject} onChange={e => { setSubject(e.target.value); triggerAutoSave(); }}
             style={{ flex: 1, background: "var(--glass-bg)", border: "1px solid var(--glass-border)", color: "var(--text-primary)", padding: "4px 8px", borderRadius: "4px", outline: "none" }} />
         </div>
 

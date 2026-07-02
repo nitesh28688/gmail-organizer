@@ -18,6 +18,7 @@ export default function InboxPage() {
   const [emails, setEmails] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeEmail, setActiveEmail] = useState(null);
+  const activeEmailRef = useRef(null);
   const [loadingBody, setLoadingBody] = useState(false);
   
   // Undo Send State
@@ -33,6 +34,7 @@ export default function InboxPage() {
   
   // Compose State
   const [composeOpen, setComposeOpen] = useState(false);
+  const composeOpenRef = useRef(false);
   const [composeTo, setComposeTo] = useState("");
   const [composeSubject, setComposeSubject] = useState("");
   const [composeBody, setComposeBody] = useState("");
@@ -80,10 +82,15 @@ export default function InboxPage() {
     return () => clearInterval(intervalId);
   }, []);
 
+  // Keep refs in sync with state
+  useEffect(() => { composeOpenRef.current = composeOpen; }, [composeOpen]);
+  useEffect(() => { activeEmailRef.current = activeEmail; }, [activeEmail]);
+
   // Ping for new emails every 5s via Pub/Sub webhook state
   useEffect(() => {
     const pingId = setInterval(async () => {
-      if (activeEmail || composeOpen) return;
+      // Use refs to avoid stale closures — this interval is created once
+      if (activeEmailRef.current || composeOpenRef.current || pendingSendRef.current) return;
       
       try {
         const res = await fetch("/api/gmail/ping");
@@ -102,11 +109,16 @@ export default function InboxPage() {
       }
     }, 5000);
     return () => clearInterval(pingId);
-  }, [activeEmail, composeOpen]);
+  }, []);
 
   const handleComposeClose = async (result) => {
     setComposeOpen(false);
-    if (!result) return;
+    if (!result) {
+      // Discard or close — refresh counts and invalidate cache so draft count updates
+      invalidateCache();
+      window.dispatchEvent(new Event("refreshCounts"));
+      return;
+    }
     
     if (result.type === "SCHEDULE") {
       try {
@@ -119,17 +131,18 @@ export default function InboxPage() {
           await fetch("/api/gmail/draft", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draftId: result.draftId, accountId: result.payload.accountId }) });
         }
         showToast("Email scheduled successfully! 🕒");
+        invalidateCache();
+        window.dispatchEvent(new Event("refreshCounts"));
         setTimeout(() => fetchInbox(), 1000);
       } catch (e) {
         showToast("Error scheduling email");
       }
     } else if (result.type === "SEND_NOW") {
-      if (result.draftId) {
-        const deletePromise = fetch("/api/gmail/draft", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draftId: result.draftId, accountId: result.payload.accountId }) }).catch(e => console.error(e));
-        if (space === "Drafts") {
-          setActiveEmail(null);
-          deletePromise.then(() => fetchInbox());
-        }
+      // Refresh drafts list if we're viewing Drafts space
+      if (space === "Drafts") {
+        setActiveEmail(null);
+        invalidateCache();
+        fetchInbox();
       }
 
       let seconds = 20;
@@ -153,7 +166,13 @@ export default function InboxPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(result.payload)
           });
+          // Delete draft only AFTER successful send
+          if (result.draftId) {
+            fetch("/api/gmail/draft", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draftId: result.draftId, accountId: result.payload.accountId }) }).catch(e => console.error("Draft cleanup failed:", e));
+          }
           showToast("Email Sent Successfully! 🚀");
+          invalidateCache();
+          window.dispatchEvent(new Event("refreshCounts"));
           fetchInbox();
         } catch (e) {
           showToast("Failed to send email");
@@ -280,8 +299,10 @@ export default function InboxPage() {
     let baseQuery = "";
     if (space === "Inbox") baseQuery = "in:inbox";
     else if (space === "All Mail") baseQuery = "-in:trash";
+    else if (space === "Starred") baseQuery = "is:starred";
     else if (space === "Drafts") baseQuery = "in:draft";
     else if (space === "Sent") baseQuery = "in:sent";
+    else if (space === "Spam") baseQuery = "in:spam";
     else if (space === "Trash") baseQuery = "in:trash";
     else if (space === "Linear Ventures") baseQuery = "(to:linearventures.in OR from:linearventures.in) -in:trash -in:draft";
     else if (space === "Nanoliss") baseQuery = "(to:nanoliss.in OR from:nanoliss.in OR to:nanoliss.com OR from:nanoliss.com) -in:trash -in:draft";
@@ -305,6 +326,9 @@ export default function InboxPage() {
   };
 
   async function fetchInbox() {
+    // Don't disrupt UI state while composing or during undo-send countdown
+    if (composeOpenRef.current || pendingSendRef.current) return;
+
     const isBasicQuery = !searchQuery && !filterTo && !filterFrom && !filterSubject && !filterAttachment;
     const cacheKey = `${space}_${activeAccountId}`;
     if (isBasicQuery && emailCache.has(cacheKey)) {
@@ -441,8 +465,12 @@ export default function InboxPage() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Skip shortcuts when typing in any form field or rich text editor
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+      if (e.target.isContentEditable) return;
       if (e.ctrlKey || e.metaKey) return;
+      // Skip all single-key shortcuts while compose modal is open
+      if (composeOpenRef.current) return;
       const fi = focusedIndexRef.current;
 
       if (e.key === 'j' && !activeEmail) {
@@ -1099,6 +1127,7 @@ export default function InboxPage() {
               initialSubject={activeEmail.subject}
               initialBody={activeEmail.threadMessages?.[activeEmail.threadMessages.length - 1]?.html || activeEmail.threadMessages?.[activeEmail.threadMessages.length - 1]?.text || ""}
               initialAttachments={activeEmail.attachments || []}
+              initialAccountId={activeEmail.accountId}
               contacts={contacts || []}
               isInline={true}
               onClose={(result) => {
@@ -1216,7 +1245,8 @@ export default function InboxPage() {
               {activeEmail.threadMessages && activeEmail.threadMessages.filter(msg => {
                 if (!threadSearch) return true;
                 const q = threadSearch.toLowerCase();
-                return (msg.from || '').toLowerCase().includes(q) || (msg.text || '').toLowerCase().includes(q) || (msg.subject || '').toLowerCase().includes(q);
+                const body = (msg.text || msg.html?.replace(/<[^>]+>/g, '') || '').toLowerCase();
+                return (msg.from || '').toLowerCase().includes(q) || body.includes(q) || (msg.subject || '').toLowerCase().includes(q);
               }).map((msg, index) => (
                 <div key={msg.id} style={{ marginBottom: '24px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '16px', overflow: 'hidden' }}>
                   <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--glass-border)', background: 'var(--glass-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1387,7 +1417,7 @@ export default function InboxPage() {
       {/* Global Reply / Compose Modal for Inbox Client */}
       {composeOpen && (
         <ComposeModal 
-          userEmail={activeEmail?.to || "me"}
+          userEmail={accounts.find(a => a.id === activeAccountId)?.email || "me"}
           initialAccountId={activeAccountId}
           initialTo={composeTo}
           initialSubject={composeSubject}
