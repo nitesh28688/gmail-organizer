@@ -39,6 +39,7 @@ export default function InboxPage() {
   const [composeSubject, setComposeSubject] = useState("");
   const [composeBody, setComposeBody] = useState("");
   const [composeAttachments, setComposeAttachments] = useState([]);
+  const [composeDraftId, setComposeDraftId] = useState(null);
   
   // Search & Filters State
   const [searchQuery, setSearchQuery] = useState("");
@@ -113,6 +114,7 @@ export default function InboxPage() {
 
   const handleComposeClose = async (result) => {
     setComposeOpen(false);
+    setComposeDraftId(null);
     if (!result) {
       // Discard or close — refresh counts and invalidate cache so draft count updates
       invalidateCache();
@@ -193,6 +195,7 @@ export default function InboxPage() {
       setComposeSubject(pendingSendRef.current.payload.subject);
       setComposeBody(pendingSendRef.current.payload.body);
       setComposeAttachments(pendingSendRef.current.payload.attachments);
+      setComposeDraftId(pendingSendRef.current.draftId);
       setComposeOpen(true);
       
       pendingSendRef.current = null;
@@ -488,11 +491,13 @@ export default function InboxPage() {
         setComposeTo(activeEmail.from);
         setComposeSubject(`Re: ${activeEmail.subject}`);
         setComposeBody("");
+        setComposeDraftId(null);
         setComposeOpen(true);
       } else if (e.key === 'c') {
         setComposeTo("");
         setComposeSubject("");
         setComposeBody("");
+        setComposeDraftId(null);
         setComposeOpen(true);
       } else if (e.key === 'Escape' && activeEmail) {
         setActiveEmail(null);
@@ -507,6 +512,7 @@ export default function InboxPage() {
       setComposeTo("");
       setComposeSubject("");
       setComposeBody("");
+      setComposeDraftId(null);
       setComposeOpen(true);
     };
     window.addEventListener("openCompose", openCompose);
@@ -1419,6 +1425,7 @@ export default function InboxPage() {
         <ComposeModal 
           userEmail={accounts.find(a => a.id === activeAccountId)?.email || "me"}
           initialAccountId={activeAccountId}
+          initialDraftId={composeDraftId}
           initialTo={composeTo}
           initialSubject={composeSubject}
           initialBody={composeBody}
