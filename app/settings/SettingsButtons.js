@@ -8,74 +8,88 @@ import Underline from "@tiptap/extension-underline";
 
 const PRESETS = [
   {
-    emoji: "💰", name: "Finance & Banking",
-    labelName: "Organizer/Finance",
-    query: "(bank OR statement OR payment OR invoice OR receipt OR bill OR transaction OR \"wire transfer\" OR \"direct deposit\" OR NEFT OR IMPS OR UPI) -in:trash -in:draft",
+    emoji: "🏦", name: "Bank Statements",
+    labelName: "Organizer/Bank-Statements",
+    query: "(subject:\"statement\" OR \"account statement\" OR \"e-statement\" OR \"monthly statement\") (bank OR card OR HDFC OR ICICI OR SBI OR AXIS OR \"credit card\" OR HSBC OR \"American Express\") -in:trash -in:draft",
     archive: false, markRead: false,
-    desc: "Bank statements, invoices, payment receipts, bills"
+    desc: "Official monthly bank statements and credit card billing summaries"
+  },
+  {
+    emoji: "🧾", name: "Invoices & Receipts",
+    labelName: "Organizer/Invoices",
+    query: "(invoice OR receipt OR bill OR transaction OR \"payment receipt\" OR \"tax invoice\" OR \"payment confirmation\" OR \"bill payment\" OR \"subscription invoice\") -subject:statement -in:trash -in:draft",
+    archive: false, markRead: false,
+    desc: "Payment receipts, customer invoices, purchase confirmations, and transaction alerts"
+  },
+  {
+    emoji: "🏛️", name: "GST & Tax",
+    labelName: "Organizer/Tax",
+    query: "(GST OR TDS OR ITR OR \"income tax\" OR \"e-way bill\" OR GSTIN OR \"tax return\" OR \"advance tax\" OR \"tax filing\" OR \"tax notice\") -in:trash -in:draft",
+    archive: false, markRead: false,
+    desc: "GST returns, tax filings, TDS certificates, and government tax updates"
+  },
+  {
+    emoji: "🔌", name: "Utility Bills & Recharges",
+    labelName: "Organizer/Utility-Bills",
+    query: "(\"utility bill\" OR \"internet bill\" OR \"mobile bill\" OR \"postpaid\" OR recharge OR electricity OR water OR piped OR broadband OR \"due date\" OR actcorp OR telecom OR Airtel OR Jio) -invoice -receipt -in:trash -in:draft",
+    archive: false, markRead: false,
+    desc: "Electricity, water, gas, broadband, and postpaid mobile bills"
   },
   {
     emoji: "📧", name: "Newsletters",
     labelName: "Organizer/Newsletters",
-    query: "(newsletter OR digest OR unsubscribe OR \"email preferences\" OR \"mailing list\" OR \"view in browser\" OR \"email frequency\") -in:trash -in:draft",
+    query: "(newsletter OR digest OR \"weekly update\" OR \"mailing list\" OR \"view in browser\" OR \"email preferences\") -subject:invoice -subject:receipt -subject:order -subject:payment -subject:bill -subject:statement -subject:security -subject:OTP -in:trash -in:draft",
     archive: true, markRead: true,
-    desc: "Digests, subscriptions — auto-archived & marked read"
+    desc: "Subscribed newsletters, email digests, blog updates — auto-archived & marked read"
   },
   {
-    emoji: "🔔", name: "Notifications",
-    labelName: "Organizer/Notifications",
-    query: "(notification OR alert OR noreply OR \"no-reply\" OR \"do not reply\" OR automated OR \"account activity\" OR \"security alert\") -in:trash -in:draft",
-    archive: false, markRead: false,
-    desc: "System alerts, account activity, security notices"
-  },
-  {
-    emoji: "📦", name: "Orders & Shipping",
-    labelName: "Organizer/Orders",
-    query: "(\"your order\" OR \"order confirmation\" OR \"order #\" OR shipping OR \"tracking number\" OR delivery OR dispatched OR \"out for delivery\" OR \"has been shipped\") -in:trash -in:draft",
-    archive: false, markRead: false,
-    desc: "Order confirmations, shipping updates, delivery tracking"
+    emoji: "🎯", name: "Promotions & Offers",
+    labelName: "Organizer/Promotions",
+    query: "category:promotions (\"% off\" OR discount OR coupon OR promo OR \"flash sale\" OR deal OR \"limited time\" OR \"exclusive offer\" OR \"special offer\") -in:trash -in:draft",
+    archive: true, markRead: true,
+    desc: "Sales, discount codes, coupons, and promotional marketing — auto-archived & marked read"
   },
   {
     emoji: "🌐", name: "Social Media",
     labelName: "Organizer/Social",
-    query: "(linkedin OR twitter OR facebook OR instagram OR youtube OR github OR \"someone you may know\" OR \"new follower\" OR \"reacted to\" OR \"mentioned you\") -in:trash -in:draft",
+    query: "category:social OR (linkedin OR twitter OR facebook OR instagram OR youtube OR medium OR substack OR threads) -in:trash -in:draft",
     archive: true, markRead: true,
-    desc: "Platform notifications — auto-archived & marked read"
+    desc: "Platform updates, follower alerts, and network activities — auto-archived & marked read"
   },
   {
-    emoji: "✈️", name: "Travel",
-    labelName: "Organizer/Travel",
-    query: "(booking OR reservation OR flight OR hotel OR itinerary OR \"check-in\" OR airbnb OR \"boarding pass\" OR \"your trip\" OR \"e-ticket\" OR makemytrip OR cleartrip OR goibibo) -in:trash -in:draft",
+    emoji: "📦", name: "Orders & Shipping",
+    labelName: "Organizer/Orders",
+    query: "(\"your order\" OR \"order confirmation\" OR \"order #\" OR shipping OR \"tracking number\" OR delivery OR dispatched OR \"out for delivery\" OR \"has been shipped\" OR \"delivered\") -in:trash -in:draft",
     archive: false, markRead: false,
-    desc: "Flights, hotels, bookings, itineraries, e-tickets"
+    desc: "E-commerce order confirmations, shipping alerts, and delivery notices"
   },
   {
-    emoji: "🎯", name: "Promotions",
-    labelName: "Organizer/Promotions",
-    query: "(\"% off\" OR discount OR coupon OR promo OR \"flash sale\" OR deal OR \"limited time\" OR \"exclusive offer\" OR \"special offer\" OR \"buy now\") -in:trash -in:draft",
-    archive: true, markRead: true,
-    desc: "Sales, coupons, offers — auto-archived & marked read"
+    emoji: "⚙️", name: "SaaS & Tool Alerts",
+    labelName: "Organizer/SaaS",
+    query: "(github OR slack OR jira OR trello OR linear OR asana OR figma OR vercel OR netlify OR postman) (assigned OR commented OR \"pull request\" OR mention OR notification OR reply OR activity OR alert) -in:trash -in:draft",
+    archive: false, markRead: false,
+    desc: "Notifications, issue assignments, and task updates from product & dev tools"
   },
   {
-    emoji: "💼", name: "Meetings & Work",
+    emoji: "🛡️", name: "Security & Logins",
+    labelName: "Organizer/Security",
+    query: "(OTP OR \"verification code\" OR \"password reset\" OR \"confirm email\" OR \"login attempt\" OR \"security alert\" OR 2FA OR \"verification link\" OR \"temporary password\" OR \"secure code\") -in:trash -in:draft",
+    archive: false, markRead: false,
+    desc: "One-time passwords, login codes, password resets, and security alarms"
+  },
+  {
+    emoji: "💼", name: "Meetings & Invites",
     labelName: "Organizer/Meetings",
-    query: "(\"calendar invite\" OR \"meeting request\" OR agenda OR \"you've been invited\" OR conference OR webinar OR \"Google Meet\" OR zoom OR \"join the meeting\") -in:trash -in:draft",
+    query: "(\"calendar invite\" OR \"meeting request\" OR agenda OR \"you've been invited\" OR conference OR webinar OR \"Google Meet\" OR zoom OR \"join the meeting\" OR \"Microsoft Teams\") -in:trash -in:draft",
     archive: false, markRead: false,
-    desc: "Meeting invites, calendar events, conferences"
+    desc: "Calendar invites, Google Meet or Zoom links, and conference agendas"
   },
   {
-    emoji: "🧾", name: "GST & Tax",
-    labelName: "Organizer/Tax",
-    query: "(GST OR \"tax invoice\" OR TDS OR ITR OR \"income tax\" OR \"e-way bill\" OR GSTIN OR \"tax return\" OR \"advance tax\") -in:trash -in:draft",
+    emoji: "✈️", name: "Travel & Stays",
+    labelName: "Organizer/Travel",
+    query: "(booking OR reservation OR flight OR hotel OR itinerary OR \"check-in\" OR airbnb OR \"boarding pass\" OR \"your trip\" OR \"e-ticket\" OR makemytrip OR cleartrip OR goibibo OR \"bus ticket\") -in:trash -in:draft",
     archive: false, markRead: false,
-    desc: "GST invoices, TDS, ITR, tax notices"
-  },
-  {
-    emoji: "🛒", name: "E-Commerce",
-    labelName: "Organizer/Shopping",
-    query: "(amazon OR flipkart OR myntra OR meesho OR snapdeal OR ajio OR nykaa OR swiggy OR zomato OR zepto OR blinkit) -in:trash -in:draft",
-    archive: false, markRead: false,
-    desc: "Amazon, Flipkart, Myntra, Swiggy and other platforms"
+    desc: "Flight e-tickets, hotel bookings, stay confirmations, and trip itineraries"
   },
 ];
 
