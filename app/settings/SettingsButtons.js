@@ -177,9 +177,47 @@ export default function SettingsButtons() {
     try {
       const res = await fetch("/api/gmail/rules");
       const data = await res.json();
-      setRules(data.rules || []);
-    } catch (e) { console.error(e); }
-    finally { setLoadingRules(false); }
+      const fetchedRules = data.rules || [];
+
+      // Auto-sync existing preset rules with codebase definitions (e.g., new exclusions)
+      const updatedRules = await Promise.all(
+        fetchedRules.map(async (rule) => {
+          const preset = PRESETS.find((p) => p.labelName === rule.labelName);
+          if (
+            preset &&
+            (rule.query !== preset.query ||
+              rule.archive !== preset.archive ||
+              rule.markRead !== preset.markRead)
+          ) {
+            try {
+              const syncRes = await fetch("/api/gmail/rules", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  id: rule.id,
+                  query: preset.query,
+                  archive: preset.archive,
+                  markRead: preset.markRead,
+                }),
+              });
+              if (syncRes.ok) {
+                const syncData = await syncRes.json();
+                return syncData.rule;
+              }
+            } catch (syncErr) {
+              console.error(`Failed to sync preset rule ${rule.labelName}:`, syncErr);
+            }
+          }
+          return rule;
+        })
+      );
+
+      setRules(updatedRules);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingRules(false);
+    }
   }
 
   useEffect(() => {
@@ -196,7 +234,13 @@ export default function SettingsButtons() {
       const res = await fetch("/api/gmail/rules", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: existing.id, enabled: !existing.enabled })
+        body: JSON.stringify({
+          id: existing.id,
+          enabled: !existing.enabled,
+          query: preset.query,
+          archive: preset.archive,
+          markRead: preset.markRead
+        })
       });
       const data = await res.json();
       setRules(prev => prev.map(r => r.id === existing.id ? data.rule : r));
