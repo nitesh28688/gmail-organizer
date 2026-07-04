@@ -20,7 +20,7 @@ export async function POST(request) {
 
     const res = await gmail.users.watch({
       userId: "me",
-      requestBody: { topicName, labelIds: ["INBOX"] }
+      requestBody: { topicName, labelIds: ["INBOX", "SENT"] }
     });
 
     const expiry = new Date();

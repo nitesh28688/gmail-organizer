@@ -140,12 +140,9 @@ export default function InboxPage() {
         showToast("Error scheduling email");
       }
     } else if (result.type === "SEND_NOW") {
-      // Refresh drafts list if we're viewing Drafts space
-      if (space === "Drafts") {
-        setActiveEmail(null);
-        invalidateCache();
-        fetchInbox();
-      }
+      setActiveEmail(null);
+      invalidateCache();
+      if (space === "Drafts" || space === "Sent") fetchInbox();
 
       let seconds = 20;
       setUndoToast(`Sending in ${seconds}s...`);

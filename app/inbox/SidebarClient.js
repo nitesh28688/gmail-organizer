@@ -306,7 +306,22 @@ export default function SidebarClient({ userEmail }) {
           ➕ Add Account
         </button>
         <button
-          onClick={() => signOut()}
+          onClick={async () => {
+            if (!activeAccountId) { signOut(); return; }
+            const res = await fetch("/api/gmail/disconnect", {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ accountId: activeAccountId }),
+            });
+            const data = await res.json();
+            if (data.remaining === 0) {
+              signOut();
+            } else {
+              const next = accounts.find(a => a.id !== activeAccountId);
+              router.replace(next ? `?account=${next.id}` : "?");
+              router.refresh();
+            }
+          }}
           style={{
             display: 'flex',
             alignItems: 'center',
