@@ -75,7 +75,7 @@ export async function GET(request) {
             userId: 'me',
             requestBody: {
               topicName: process.env.PUBSUB_TOPIC_NAME,
-              labelIds: ['INBOX']
+              labelIds: ['INBOX', 'SENT']
             }
           });
 
