@@ -1,0 +1,14 @@
+{
+  "name": "gmail-organizer",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "auth": "node auth.js",
+    "setup": "node setup.js",
+    "audit": "node audit.js"
+  },
+  "dependencies": {
+    "googleapis": "^144.0.0",
+    "open": "^10.1.0"
+  }
+}

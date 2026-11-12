@@ -44,3 +44,8 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# gmail CLI toolkit (moved in 2026-11-13) - OAuth secrets never get committed
+cli/node_modules/
+cli/credentials.json
+cli/token*.json
